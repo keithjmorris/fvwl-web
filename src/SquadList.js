@@ -70,7 +70,35 @@ const StatusFilter = () => (
   </div>
 );
 
-// Then use filteredPlayers instead of players in your map
 {filteredPlayers.map((player) => (
-  // ... your existing player card code
+  <div 
+    key={player.id} 
+    onClick={() => setSelectedPlayer(player)}
+    style={{ 
+      border: '2px solid #003f7f', 
+      padding: '15px', 
+      borderRadius: '8px',
+      backgroundColor: '#f8f9fa',
+      cursor: 'pointer',
+      transition: 'transform 0.2s ease'
+    }}
+    onMouseOver={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
+    onMouseOut={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+  >
+    <h3 style={{ margin: '0 0 10px 0', color: '#003f7f' }}>
+      {player.forename} {player.surname}
+    </h3>
+    <p style={{ margin: '5px 0' }}><strong>Status:</strong> {player.notes}</p>
+    
+    {user ? (
+      <>
+        <p style={{ margin: '5px 0' }}><strong>Total:</strong> £{player.Total?.toLocaleString()}</p>
+        <p style={{ margin: '5px 0' }}><strong>Overall:</strong> £{player.overallTotal?.toLocaleString()}</p>
+      </>
+    ) : (
+      <p style={{ margin: '5px 0', color: '#999', fontStyle: 'italic' }}>
+        Sign in to view financial details
+      </p>
+    )}
+  </div>
 ))}
