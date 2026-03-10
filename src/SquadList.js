@@ -102,3 +102,5 @@ const StatusFilter = () => (
     )}
   </div>
 ))}
+
+export default SquadList;
