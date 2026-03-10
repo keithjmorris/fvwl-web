@@ -1,18 +1,51 @@
 import React from 'react';
 
 function FixtureDetail({ fixture, onBack }) {
-  const getGoalScorers = () => {
-    const scorers = [];
+  const getGoalDetails = () => {
+    const goals = [];
+    let assistIndex = 1;
+
     for (let i = 1; i <= 8; i++) {
       const scorer = fixture[`scorer${i}`];
-      if (scorer && scorer !== "0") {
-        scorers.push(scorer);
+      if (scorer && scorer !== "0" && scorer !== "") {
+        
+        // Parse player name and goals
+        const nameMatch = scorer.match(/^([^(]+)/);
+        const playerName = nameMatch ? nameMatch[1].trim() : scorer;
+        
+        // Extract all goal times - handles both single: (50') and multiple: (50', 90'+4)
+        const timeMatches = scorer.match(/\(([^)]+)\)/);
+        if (timeMatches) {
+          const times = timeMatches[1].split(',').map(time => time.trim());
+          
+          // Create a goal entry for each time
+          times.forEach(time => {
+            const assist = fixture[`assist${assistIndex}`];
+            goals.push({
+              player: playerName,
+              time: time,
+              assist: assist && assist !== "0" && assist !== "" ? assist : null,
+              originalScorer: scorer
+            });
+            assistIndex++;
+          });
+        } else {
+          // Fallback if no time format detected
+          const assist = fixture[`assist${assistIndex}`];
+          goals.push({
+            player: playerName,
+            time: '',
+            assist: assist && assist !== "0" && assist !== "" ? assist : null,
+            originalScorer: scorer
+          });
+          assistIndex++;
+        }
       }
     }
-    return scorers;
+    return goals;
   };
 
-  const goalScorers = getGoalScorers();
+  const goalDetails = getGoalDetails();
 
   return (
     <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
@@ -103,7 +136,7 @@ function FixtureDetail({ fixture, onBack }) {
         )}
       </div>
 
-      {/* Goal Scorers */}
+      {/* Goal Scorers with Assists */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
@@ -115,10 +148,17 @@ function FixtureDetail({ fixture, onBack }) {
         <div style={{ textDecoration: 'underline', marginBottom: '10px', fontSize: '18px' }}>
           Goal Scorers
         </div>
-        {goalScorers.length > 0 ? (
-          goalScorers.map((scorer, index) => (
-            <div key={index} style={{ marginBottom: '5px' }}>
-              {scorer}
+        {goalDetails.length > 0 ? (
+          goalDetails.map((goal, index) => (
+            <div key={index} style={{ marginBottom: '8px' }}>
+              <div style={{ fontSize: '16px' }}>
+                {goal.player} ({goal.time})
+              </div>
+              {goal.assist && (
+                <div style={{ fontSize: '14px', color: '#ffc107', marginLeft: '15px' }}>
+                  Assist: {goal.assist}
+                </div>
+              )}
             </div>
           ))
         ) : (
