@@ -3,45 +3,52 @@ import React from 'react';
 function FixtureDetail({ fixture, onBack }) {
   const getGoalDetails = () => {
     const goals = [];
-    let assistIndex = 1;
-
+    
+    // Build arrays of all scorers and assists first
+    const allScorers = [];
+    const allAssists = [];
+    
     for (let i = 1; i <= 8; i++) {
       const scorer = fixture[`scorer${i}`];
+      const assist = fixture[`assist${i}`];
+      
       if (scorer && scorer !== "0" && scorer !== "") {
-        
-        // Parse player name and goals
-        const nameMatch = scorer.match(/^([^(]+)/);
-        const playerName = nameMatch ? nameMatch[1].trim() : scorer;
-        
-        // Extract all goal times - handles both single: (50') and multiple: (50', 90'+4)
-        const timeMatches = scorer.match(/\(([^)]+)\)/);
-        if (timeMatches) {
-          const times = timeMatches[1].split(',').map(time => time.trim());
-          
-          // Create a goal entry for each time
-          times.forEach(time => {
-            const assist = fixture[`assist${assistIndex}`];
-            goals.push({
-              player: playerName,
-              time: time,
-              assist: assist && assist !== "0" && assist !== "" ? assist : null,
-              originalScorer: scorer
-            });
-            assistIndex++;
-          });
-        } else {
-          // Fallback if no time format detected
-          const assist = fixture[`assist${assistIndex}`];
-          goals.push({
-            player: playerName,
-            time: '',
-            assist: assist && assist !== "0" && assist !== "" ? assist : null,
-            originalScorer: scorer
-          });
-          assistIndex++;
-        }
+        allScorers.push(scorer);
+        allAssists.push(assist || "");
       }
     }
+
+    // Process the arrays without any loop variables
+    let currentAssistIndex = 0;
+    
+    allScorers.forEach((scorer) => {
+      const nameMatch = scorer.match(/^([^(]+)/);
+      const playerName = nameMatch ? nameMatch[1].trim() : scorer;
+      
+      const timeMatches = scorer.match(/\(([^)]+)\)/);
+      if (timeMatches) {
+        const times = timeMatches[1].split(',').map(time => time.trim());
+        
+        times.forEach((time) => {
+          const assist = allAssists[currentAssistIndex];
+          goals.push({
+            player: playerName,
+            time: time,
+            assist: assist && assist !== "0" && assist !== "" ? assist : null
+          });
+          currentAssistIndex++;
+        });
+      } else {
+        const assist = allAssists[currentAssistIndex];
+        goals.push({
+          player: playerName,
+          time: '',
+          assist: assist && assist !== "0" && assist !== "" ? assist : null
+        });
+        currentAssistIndex++;
+      }
+    });
+
     return goals;
   };
 
@@ -49,7 +56,6 @@ function FixtureDetail({ fixture, onBack }) {
 
   return (
     <div style={{ padding: '20px', maxWidth: '400px', margin: '0 auto' }}>
-      {/* Back button */}
       <button 
         onClick={onBack}
         style={{
@@ -65,7 +71,6 @@ function FixtureDetail({ fixture, onBack }) {
         ← Back to Fixtures
       </button>
 
-      {/* Date */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
@@ -78,7 +83,6 @@ function FixtureDetail({ fixture, onBack }) {
         {fixture.date}
       </div>
 
-      {/* Match title */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
@@ -94,7 +98,6 @@ function FixtureDetail({ fixture, onBack }) {
         }
       </div>
 
-      {/* Competition and venue */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
@@ -109,7 +112,6 @@ function FixtureDetail({ fixture, onBack }) {
         <span>{fixture.homeOrAway}</span>
       </div>
 
-      {/* Score */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
@@ -136,7 +138,6 @@ function FixtureDetail({ fixture, onBack }) {
         )}
       </div>
 
-      {/* Goal Scorers with Assists */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
@@ -166,7 +167,6 @@ function FixtureDetail({ fixture, onBack }) {
         )}
       </div>
 
-      {/* League stats or Cup match */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
