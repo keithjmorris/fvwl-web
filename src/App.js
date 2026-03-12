@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
-import SquadList from './SquadList';
+import EnhancedSquadList from './EnhancedSquadList';
 import FixtureList from './FixtureList';
 import ScorerList from './ScorerList';
+import AppearanceList from './AppearanceList';
+import DisciplinaryList from './DisciplinaryList';
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -24,7 +26,9 @@ function Navigation({ activeView, onViewChange, user, onShowLogin }) {
   const navItems = [
     { key: 'squad', label: 'Squad' },
     { key: 'fixtures', label: 'Fixtures' },
-    { key: 'scorers', label: 'Scorers' }
+    { key: 'scorers', label: 'Scorers' },
+    { key: 'appearances', label: 'Appearances' },     // ADD THIS
+    { key: 'disciplinary', label: 'Disciplinary' } 
   ];
 
   return (
@@ -284,13 +288,17 @@ function App() {
   const renderView = () => {
     switch (activeView) {
       case 'squad':
-        return <SquadList user={user} />;
+        return <EnhancedSquadList isAuthenticated={!!user} />;
       case 'fixtures':
         return <FixtureList />;
       case 'scorers':
         return <ScorerList />;
+      case 'appearances': 
+        return <AppearanceList />;
+      case 'disciplinary': 
+        return <DisciplinaryList />;
       default:
-        return <SquadList user={user} />;
+        return <EnhancedSquadList isAuthenticated={!!user} />;
     }
   };
 
