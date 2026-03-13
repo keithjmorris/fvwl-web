@@ -1,4 +1,4 @@
-// fixtureStatsCalculator.js - Processes fixture data to calculate player statistics
+// fixtureStatsCalculator.js - Enhanced with match-by-match details
 
 export const calculatePlayerStats = (fixtures) => {
   const playerStats = {};
@@ -57,7 +57,6 @@ export const calculatePlayerStats = (fixtures) => {
         
         playerStats[player].totalAppearances++;
         playerStats[player].totalSubstitutes++;
-        // Substitutes always complete the match (can't be subbed off after coming on)
         playerStats[player].completedMatches++;
       }
     }
@@ -102,6 +101,106 @@ export const calculatePlayerStats = (fixtures) => {
   });
 
   return playerStats;
+};
+
+// NEW: Get appearance details for a specific player
+export const getPlayerAppearanceDetails = (fixtures, playerName) => {
+  const appearances = [];
+  
+  fixtures.forEach(fixture => {
+    let playerRole = null;
+    let wasSubstituted = false;
+    let substitutionTime = null;
+    let cameOnTime = null;
+    
+    // Check if player started
+    for (let i = 1; i <= 11; i++) {
+      if (fixture[`starter${i}`] === playerName) {
+        playerRole = 'Started';
+        
+        // Check if they were substituted off
+        for (let j = 1; j <= 5; j++) {
+          if (fixture[`substitutedPlayer${j}`] === playerName) {
+            wasSubstituted = true;
+            substitutionTime = fixture[`substituteTime${j}`];
+            break;
+          }
+        }
+        break;
+      }
+    }
+    
+    // Check if player came on as substitute
+    if (!playerRole) {
+      for (let i = 1; i <= 5; i++) {
+        if (fixture[`substitute${i}`] === playerName) {
+          playerRole = 'Substitute';
+          cameOnTime = fixture[`substituteTime${i}`];
+          break;
+        }
+      }
+    }
+    
+    // If player was involved, add to appearances
+    if (playerRole) {
+      appearances.push({
+        date: fixture.date,
+        opponent: fixture.opponent,
+        homeOrAway: fixture.homeOrAway,
+        competition: fixture.competition,
+        result: fixture.result,
+        role: playerRole,
+        wasSubstituted,
+        substitutionTime,
+        cameOnTime
+      });
+    }
+  });
+  
+  return appearances.reverse(); // Most recent first
+};
+
+// NEW: Get disciplinary details for a specific player
+export const getPlayerDisciplinaryDetails = (fixtures, playerName) => {
+  const disciplinaryRecords = [];
+  
+  fixtures.forEach(fixture => {
+    const matchIncidents = [];
+    
+    // Check for yellow cards
+    for (let i = 1; i <= 6; i++) {
+      if (fixture[`yellowCard${i}`] === playerName) {
+        matchIncidents.push({
+          type: 'Yellow Card',
+          time: fixture[`yellowCardTime${i}`] || 'Unknown time'
+        });
+      }
+    }
+    
+    // Check for red cards
+    for (let i = 1; i <= 2; i++) {
+      if (fixture[`redCard${i}`] === playerName) {
+        matchIncidents.push({
+          type: 'Red Card',
+          time: fixture[`redCardTime${i}`] || 'Unknown time'
+        });
+      }
+    }
+    
+    // If player had cards in this match, add to records
+    if (matchIncidents.length > 0) {
+      disciplinaryRecords.push({
+        date: fixture.date,
+        opponent: fixture.opponent,
+        homeOrAway: fixture.homeOrAway,
+        competition: fixture.competition,
+        result: fixture.result,
+        incidents: matchIncidents
+      });
+    }
+  });
+  
+  return disciplinaryRecords.reverse(); // Most recent first
 };
 
 export const formatPlayerStats = (playerStats) => {
