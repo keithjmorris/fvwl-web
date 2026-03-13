@@ -3,9 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import EnhancedSquadList from './EnhancedSquadList';
 import FixtureList from './FixtureList';
-import ScorerList from './ScorerList';
-import AppearanceList from './AppearanceList';
-import DisciplinaryList from './DisciplinaryList';
+import Stats from './Stats'; 
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -23,13 +21,11 @@ const auth = getAuth(app);
 
 // Navigation Component with Gear Icon
 function Navigation({ activeView, onViewChange, user, onShowLogin }) {
-  const navItems = [
-    { key: 'squad', label: 'Squad' },
-    { key: 'fixtures', label: 'Fixtures' },
-    { key: 'scorers', label: 'Scorers' },
-    { key: 'appearances', label: 'Appearances' },     // ADD THIS
-    { key: 'disciplinary', label: 'Disciplinary' } 
-  ];
+const navItems = [
+  { key: 'squad', label: 'Squad' },
+  { key: 'fixtures', label: 'Fixtures' },
+  { key: 'stats', label: 'Stats' }     // Replace the 3 separate stat tabs
+];
 
   return (
     <nav style={{
@@ -291,12 +287,8 @@ function App() {
         return <EnhancedSquadList isAuthenticated={!!user} />;
       case 'fixtures':
         return <FixtureList />;
-      case 'scorers':
-        return <ScorerList />;
-      case 'appearances': 
-        return <AppearanceList />;
-      case 'disciplinary': 
-        return <DisciplinaryList />;
+      case 'stats':
+        return <Stats />;
       default:
         return <EnhancedSquadList isAuthenticated={!!user} />;
     }
