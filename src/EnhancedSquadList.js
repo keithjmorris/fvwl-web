@@ -30,22 +30,20 @@ const EnhancedSquadList = ({ isAuthenticated }) => {
   const [scorers, setScorers] = useState([]);
   const [playerStats, setPlayerStats] = useState({});
   const [fixtures, setFixtures] = useState([]);
-  
+  const [statusFilter, setStatusFilter] = useState('All');
 
   // Load players from Firebase
   useEffect(() => {
     const playersRef = ref(database, 'squad2526');
     const unsubscribe = onValue(playersRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const playersArray = Object.values(data);
-        setPlayers(playersArray);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, []);
+  const data = snapshot.val();
+  if (data) {
+    const playersArray = Object.values(data).filter(player => player.notes !== 'Total');
+    setPlayers(playersArray);
+  }
+  setLoading(false);
+});
+}, []);  // ← These lines were missing!
 
   // Load scorers data
   useEffect(() => {
@@ -96,7 +94,7 @@ const EnhancedSquadList = ({ isAuthenticated }) => {
           setPlayerStats(statsLookup);
         }
       } catch (error) {
-console.error('Error calculating player stats:', error);
+        console.error('Error calculating player stats:', error);
       }
     };
 
@@ -160,9 +158,43 @@ console.error('Error calculating player stats:', error);
     };
   };
 
+  // Calculate team totals
+  const calculateTeamTotals = (filteredPlayers = players) => {
+  let totalGoals = 0;
+  let totalCards = 0;
+  let activePlayers = 0;
+  
+  filteredPlayers.forEach(player => {
+    const goals = getPlayerGoals(player);
+    const stats = getPlayerStatistics(player);
+    
+    totalGoals += goals;
+    totalCards += stats.cards;
+    
+    // Count active players (not "Gone")
+    if (player.notes !== 'Gone') {
+      activePlayers++;
+    }
+  });
+  
+  return {
+    totalGoals,
+    totalCards,
+    activePlayers,
+    totalFixtures: fixtures.length
+  };
+};
   if (loading) {
     return <div style={{padding: '20px'}}>Loading squad...</div>;
   }
+
+ const filteredPlayers = players.filter(player => {
+  if (statusFilter === 'All') return true;
+  if (statusFilter === 'Available') return player.notes === 'Squad' || player.notes === 'Loan in';
+  return player.notes === statusFilter;
+});
+
+const teamTotals = calculateTeamTotals(filteredPlayers);
 
   return (
     <div style={{padding: '20px'}}>
@@ -177,10 +209,92 @@ console.error('Error calculating player stats:', error);
       </div>
       
       <div style={{ marginBottom: '15px', fontSize: '14px', color: '#666' }}>
-        {players.length} players • {fixtures.length} fixtures this season • {isAuthenticated ? 'Full financial data visible' : 'Public view - financial data hidden'}
+        {players.length} players . {fixtures.length} fixtures this season . {isAuthenticated ? 'Full financial data visible' : 'Public view - financial data hidden'}
       </div>
       
-      {players.map(player => {
+      {/* Team Totals */}
+      <div
+        style={{
+          backgroundColor: 'white',
+          border: '2px solid #003f7f',
+          borderRadius: '8px',
+          padding: '20px',
+          marginBottom: '20px',
+          boxShadow: '0 4px 8px rgba(0,0,0,0.15)'
+        }}
+      >
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+          <div>
+            <h3 style={{ color: '#003f7f', margin: '0 0 5px 0', fontSize: '24px' }}>
+              Team Totals
+            </h3>
+            <div style={{ color: '#666', fontSize: '16px' }}>
+              Season 2025/26 . {teamTotals.activePlayers} active players
+            </div>
+          </div>
+          
+          <div style={{ textAlign: 'right', color: '#666', fontSize: '14px' }}>
+            <div>{teamTotals.totalGoals} total goals . {teamTotals.totalCards} total cards</div>
+            <div>{teamTotals.totalFixtures} fixtures played this season</div>
+          </div>
+        </div>
+
+        {/* Team Statistics Grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+          gap: '10px'
+        }}>
+          <div style={{backgroundColor: '#e3f2fd', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
+            <div style={{fontWeight: 'bold', color: '#1976d2', fontSize: '20px'}}>{teamTotals.totalGoals}</div>
+            <div style={{fontSize: '12px', color: '#666'}}>Total Goals</div>
+          </div>
+          
+          <div style={{backgroundColor: '#fff3e0', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
+            <div style={{fontWeight: 'bold', color: '#f57c00', fontSize: '20px'}}>{teamTotals.totalCards}</div>
+            <div style={{fontSize: '12px', color: '#666'}}>Total Cards</div>
+          </div>
+          
+          <div style={{backgroundColor: '#e8f5e8', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
+            <div style={{fontWeight: 'bold', color: '#388e3c', fontSize: '20px'}}>{teamTotals.activePlayers}</div>
+            <div style={{fontSize: '12px', color: '#666'}}>Active Players</div>
+          </div>
+          
+          <div style={{backgroundColor: '#f0f4f8', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
+            <div style={{fontWeight: 'bold', color: '#546e7a', fontSize: '20px'}}>{teamTotals.totalFixtures}</div>
+            <div style={{fontSize: '12px', color: '#666'}}>Fixtures Played</div>
+          </div>
+        </div>
+      </div>
+
+      {/* ADD THE DROPDOWN HERE */}
+      <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+        <label style={{ fontSize: '14px', color: '#666' }}>Filter by status:</label>
+        <select 
+          value={statusFilter} 
+          onChange={(e) => setStatusFilter(e.target.value)}
+          style={{
+            padding: '8px 12px',
+            borderRadius: '4px',
+            border: '1px solid #ddd',
+            fontSize: '14px'
+          }}
+        >
+          <option value="All">All Players</option>
+          <option value="Squad">Squad</option>
+          <option value="Loan in">Loan in</option>
+          <option value="Available">Squad + Loan in</option>
+          <option value="On loan">On loan</option>
+          <option value="Gone">Gone</option>
+        </select>
+      </div>
+
+      {/* Individual Players */}
+      {players.filter(player => {
+  if (statusFilter === 'All') return true;
+  if (statusFilter === 'Available') return player.notes === 'Squad' || player.notes === 'Loan in';
+  return player.notes === statusFilter;
+}).map(player => {
         const goals = getPlayerGoals(player);
         const stats = getPlayerStatistics(player);
         
@@ -203,13 +317,13 @@ console.error('Error calculating player stats:', error);
                   {player.forename} {player.surname}
                 </h3>
                 <div style={{ color: '#666', fontSize: '16px' }}>
-                  {player.notes}
+                  Status: {player.notes}
                 </div>
               </div>
               
               {/* Quick Stats Summary */}
               <div style={{ textAlign: 'right', color: '#666', fontSize: '14px' }}>
-                <div>{goals} goals • {stats.appearances}/{stats.totalFixtures} games • {stats.cards} cards</div>
+                <div>{goals} goals . {stats.appearances}/{stats.totalFixtures} games . {stats.cards} cards</div>
                 <div>{stats.appearancePercentage}% season participation</div>
               </div>
             </div>
@@ -269,13 +383,13 @@ console.error('Error calculating player stats:', error);
                   <div>
                     <div style={{ fontSize: '14px', color: '#666' }}>Weekly Wage</div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                      £{player.currentWeeklyWage?.toLocaleString() || '0'}
+                      Â£{player.currentWeeklyWage?.toLocaleString() || '0'}
                     </div>
                   </div>
                   <div>
                     <div style={{ fontSize: '14px', color: '#666' }}>Total Value</div>
                     <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                      £{player.overallTotal?.toLocaleString() || '0'}
+                      Â£{player.overallTotal?.toLocaleString() || '0'}
                     </div>
                   </div>
                 </div>

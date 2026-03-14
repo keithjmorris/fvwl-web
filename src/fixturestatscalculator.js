@@ -16,7 +16,8 @@ export const calculatePlayerStats = (fixtures) => {
             completedMatches: 0,
             substitutedOff: 0,
             yellowCards: 0,
-            redCards: 0
+            redCards: 0,
+            goals: 0
           };
         }
         
@@ -51,7 +52,8 @@ export const calculatePlayerStats = (fixtures) => {
             completedMatches: 0,
             substitutedOff: 0,
             yellowCards: 0,
-            redCards: 0
+            redCards: 0,
+            goals: 0
           };
         }
         
@@ -73,7 +75,8 @@ export const calculatePlayerStats = (fixtures) => {
             completedMatches: 0,
             substitutedOff: 0,
             yellowCards: 0,
-            redCards: 0
+            redCards: 0,
+            goals: 0
           };
         }
         playerStats[player].yellowCards++;
@@ -92,13 +95,34 @@ export const calculatePlayerStats = (fixtures) => {
             completedMatches: 0,
             substitutedOff: 0,
             yellowCards: 0,
-            redCards: 0
+            redCards: 0,
+            goals: 0
           };
         }
         playerStats[player].redCards++;
       }
     }
+
+    for (let i = 1; i <= 6; i++) {
+      const scorer = fixture[`scorer${i}`];
+      if (scorer && scorer.trim()) {
+        if (!playerStats[scorer]) {
+          playerStats[scorer] = {
+            totalAppearances: 0,
+            totalStarts: 0,
+            totalSubstitutes: 0,
+            completedMatches: 0,
+            substitutedOff: 0,
+            yellowCards: 0,
+            redCards: 0,
+            goals: 0
+          };
+        }
+        playerStats[scorer].goals++;
+      }
+    }
   });
+
 
   return playerStats;
 };
