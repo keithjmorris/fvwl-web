@@ -35,7 +35,7 @@ const EnhancedSquadList = ({ isAuthenticated }) => {
   // Load players from Firebase
   useEffect(() => {
     const playersRef = ref(database, 'squad2526');
-    const unsubscribe = onValue(playersRef, (snapshot) => {
+    const _unsubscribe = onValue(playersRef, (snapshot) => {
   const data = snapshot.val();
   if (data) {
     const playersArray = Object.values(data).filter(player => player.notes !== 'Total');
