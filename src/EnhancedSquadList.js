@@ -33,17 +33,20 @@ const EnhancedSquadList = ({ isAuthenticated }) => {
   const [statusFilter, setStatusFilter] = useState('All');
 
   // Load players from Firebase
-  useEffect(() => {
-    const playersRef = ref(database, 'squad2526');
-    const _unsubscribe = onValue(playersRef, (snapshot) => {
-  const data = snapshot.val();
-  if (data) {
-    const playersArray = Object.values(data).filter(player => player.notes !== 'Total');
-    setPlayers(playersArray);
-  }
-  setLoading(false);
-});
-}, []);  // ← These lines were missing!
+useEffect(() => {
+  const playersRef = ref(database, 'squad2526');
+  const unsubscribe = onValue(playersRef, (snapshot) => {
+    const data = snapshot.val();
+    if (data) {
+      const playersArray = Object.values(data).filter(player => player.notes !== 'Total');
+      setPlayers(playersArray);
+    }
+    setLoading(false);
+  });
+
+  // Cleanup function to unsubscribe when component unmounts
+  return () => unsubscribe();
+}, []);
 
   // Load scorers data
   useEffect(() => {
