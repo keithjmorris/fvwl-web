@@ -11,10 +11,22 @@ function PlayerDetail({ player, onBack, user }) {
     return dateString || 'N/A';
   };
 
+  const calculateAge = (dobString) => {
+    if (!dobString) return 'N/A';
+    const parts = dobString.split('/');
+    if (parts.length !== 3) return 'N/A';
+    const dob = new Date(parts[2], parts[1] - 1, parts[0]);
+    const today = new Date();
+    let years = today.getFullYear() - dob.getFullYear();
+    let months = today.getMonth() - dob.getMonth();
+    if (months < 0) { years--; months += 12; }
+    return `${years} years, ${months} months`;
+  };
+
   return (
     <div style={{ padding: '20px', maxWidth: '500px', margin: '0 auto' }}>
       {/* Back button */}
-      <button 
+      <button
         onClick={onBack}
         style={{
           marginBottom: '20px',
@@ -40,7 +52,7 @@ function PlayerDetail({ player, onBack, user }) {
         {player.forename} {player.surname}
       </div>
 
-      {/* Basic Info - Always visible */}
+      {/* Basic Info */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
@@ -52,19 +64,23 @@ function PlayerDetail({ player, onBack, user }) {
         <div style={{ color: '#ffc107', marginBottom: '10px', fontSize: '16px' }}>Basic Information</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
           <span>Status:</span>
-          <span>{player.notes}</span>
+          <span style={{ color: '#ff6b6b' }}>{player.notes}</span>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
           <span>Date of Birth:</span>
           <span>{formatDate(player.DOB)}</span>
         </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+          <span>Age:</span>
+          <span>{calculateAge(player.DOB)}</span>
+        </div>
         <div style={{ display: 'flex', justifyContent: 'space-between' }}>
           <span>Rating:</span>
-          <span>{player.rating || 'Not rated'}/5</span>
+          <span>{player.rating || 'Not rated'}</span>
         </div>
       </div>
 
-      {/* Goal Statistics - Always visible */}
+      {/* Goal Statistics */}
       <div style={{
         backgroundColor: '#003f7f',
         color: 'white',
@@ -96,7 +112,7 @@ function PlayerDetail({ player, onBack, user }) {
         </div>
       </div>
 
-      {/* CONTRACT INFO - Auth required */}
+      {/* Contract Details */}
       {showFinancials && (
         <div style={{
           backgroundColor: '#003f7f',
@@ -126,7 +142,7 @@ function PlayerDetail({ player, onBack, user }) {
         </div>
       )}
 
-      {/* WAGE BREAKDOWN - Auth required */}
+      {/* Wage Breakdown */}
       {showFinancials && (
         <div style={{
           backgroundColor: '#003f7f',
@@ -160,7 +176,7 @@ function PlayerDetail({ player, onBack, user }) {
         </div>
       )}
 
-      {/* AGENT FEES - Auth required */}
+      {/* Agent Fees */}
       {showFinancials && (
         <div style={{
           backgroundColor: '#003f7f',
@@ -186,7 +202,7 @@ function PlayerDetail({ player, onBack, user }) {
         </div>
       )}
 
-      {/* OTHER COSTS - Auth required */}
+      {/* Additional Costs */}
       {showFinancials && (
         <div style={{
           backgroundColor: '#003f7f',
@@ -216,7 +232,7 @@ function PlayerDetail({ player, onBack, user }) {
         </div>
       )}
 
-      {/* CONTRACT CONTINGENTS - Auth required */}
+      {/* Contract Contingents */}
       {showFinancials && (player.otherContractContingent || player.otherContractContingent2 || player.promotionContingents) && (
         <div style={{
           backgroundColor: '#003f7f',
@@ -248,7 +264,7 @@ function PlayerDetail({ player, onBack, user }) {
         </div>
       )}
 
-      {/* TRANSFER INFO - Auth required */}
+      {/* Transfer Details */}
       {showFinancials && (
         <div style={{
           backgroundColor: '#003f7f',
@@ -282,7 +298,7 @@ function PlayerDetail({ player, onBack, user }) {
         </div>
       )}
 
-      {/* FINANCIAL TOTAL - Auth required */}
+      {/* Overall Total */}
       {showFinancials && (
         <div style={{
           backgroundColor: '#28a745',
@@ -294,26 +310,7 @@ function PlayerDetail({ player, onBack, user }) {
           fontSize: '18px',
           textAlign: 'center'
         }}>
-          <div>OVERALL TOTAL: {formatCurrency(player.overallTotal)}</div>
-        </div>
-      )}
-
-      {/* Auth prompt for non-logged users */}
-      {!showFinancials && (
-        <div style={{
-          backgroundColor: '#f8f9fa',
-          padding: '20px',
-          borderRadius: '10px',
-          border: '2px solid #003f7f',
-          textAlign: 'center',
-          color: '#666'
-        }}>
-          <p style={{ margin: '0 0 10px 0', fontStyle: 'italic' }}>
-            Contract, financial, and transfer details available to authorized users
-          </p>
-          <p style={{ margin: 0, fontSize: '14px' }}>
-            Click the gear icon (⚙️) to access admin login
-          </p>
+          OVERALL TOTAL: {formatCurrency(player.overallTotal)}
         </div>
       )}
     </div>

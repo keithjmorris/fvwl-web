@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getDatabase, ref, onValue } from 'firebase/database';
+import PlayerDetail from './PlayerDetail';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAvITdQHZkF-Kjkacna0fsxPYqbBEKJwlg",
@@ -15,13 +16,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-function EnhancedSquadList({ isAuthenticated, onRequestLogin }) {
+function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('All');
   const [fixtures, setFixtures] = useState([]);
   const [gestureStep, setGestureStep] = useState(0);
   const [gestureTimer, setGestureTimer] = useState(null);
+  const [selectedPlayer, setSelectedPlayer] = useState(null);
 
   useEffect(() => {
     const fetchFixtures = async () => {
@@ -128,6 +130,14 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin }) {
   };
 
   if (loading) return <div style={{ padding: '20px' }}>Loading squad...</div>;
+
+  if (selectedPlayer) {
+  return <PlayerDetail 
+    player={selectedPlayer} 
+    onBack={() => setSelectedPlayer(null)}
+    user={user}
+  />;
+}
 
   const filteredPlayers = players.filter(player => {
     if (statusFilter === 'All') return true;
@@ -276,8 +286,11 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin }) {
         const totalCards = stats.yellowCards + stats.redCards;
 
         return (
-          <div key={player.id} style={{
-            border: '1px solid #ddd',
+          <div key={player.id} 
+  onClick={() => { if (user) setSelectedPlayer(player); }}
+  style={{
+    border: '1px solid #ddd',
+    cursor: user ? 'pointer' : 'default',
             borderRadius: '10px',
             padding: '16px',
             marginBottom: '14px',

@@ -275,19 +275,20 @@ function App() {
   const renderView = () => {
     switch (activeView) {
       case 'squad':
-       return <EnhancedSquadList isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} />;
+      return <EnhancedSquadList isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} user={user} />;
       case 'fixtures':
         return <FixtureList />;
       case 'stats':
         return <Stats />;
       default:
-        return <EnhancedSquadList isAuthenticated={!!user} />;
+       return <EnhancedSquadList isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} user={user} />;
     }
   };
 
   if (loading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
   }
+    
 
   return (
     <div>
