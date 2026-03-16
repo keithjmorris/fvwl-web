@@ -92,7 +92,7 @@ function DisciplinaryDetail({ player, onBack }) {
           cursor: 'pointer'
         }}
       >
-        â† Back to Disciplinary
+        ← Back to Disciplinary
       </button>
 
       {/* Player name */}

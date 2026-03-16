@@ -1,420 +1,343 @@
 import React, { useState, useEffect } from 'react';
-import { ref, onValue, getDatabase } from 'firebase/database';
-import { initializeApp, getApps } from 'firebase/app';
-import { calculatePlayerStats, formatPlayerStats } from './fixturestatscalculator';
+import { initializeApp } from 'firebase/app';
+import { getDatabase, ref, onValue } from 'firebase/database';
 
-const getFirebaseApp = () => {
-  const apps = getApps();
-  if (apps.length > 0) {
-    return apps[0];
-  } else {
-    const firebaseConfig = {
-      apiKey: "AIzaSyAvITdQHZkF-Kjkacna0fsxPYqbBEKJwlg",
-      authDomain: "fvwl-8109b.firebaseapp.com",
-      databaseURL: "https://fvwl-8109b-default-rtdb.europe-west1.firebasedatabase.app",
-      projectId: "fvwl-8109b",
-      storageBucket: "fvwl-8109b.firebasestorage.app",
-      messagingSenderId: "406636067359",
-      appId: "1:406636067359:web:8b70673d38495254b2f32a"
-    };
-    return initializeApp(firebaseConfig);
-  }
+const firebaseConfig = {
+  apiKey: "AIzaSyAvITdQHZkF-Kjkacna0fsxPYqbBEKJwlg",
+  authDomain: "fvwl-8109b.firebaseapp.com",
+  databaseURL: "https://fvwl-8109b-default-rtdb.europe-west1.firebasedatabase.app",
+  projectId: "fvwl-8109b",
+  storageBucket: "fvwl-8109b.firebasestorage.app",
+  messagingSenderId: "406636067359",
+  appId: "1:406636067359:web:8b70673d38495254b2f32a"
 };
 
-const app = getFirebaseApp();
+const app = initializeApp(firebaseConfig);
 const database = getDatabase(app);
 
-const EnhancedSquadList = ({ isAuthenticated }) => {
+function EnhancedSquadList({ isAuthenticated, onRequestLogin }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [scorers, setScorers] = useState([]);
-  const [playerStats, setPlayerStats] = useState({});
-  const [fixtures, setFixtures] = useState([]);
   const [statusFilter, setStatusFilter] = useState('All');
+  const [fixtures, setFixtures] = useState([]);
+  const [gestureStep, setGestureStep] = useState(0);
+  const [gestureTimer, setGestureTimer] = useState(null);
 
-  // Load players from Firebase
-useEffect(() => {
-  const playersRef = ref(database, 'squad2526');
-  const unsubscribe = onValue(playersRef, (snapshot) => {
-    const data = snapshot.val();
-    if (data) {
-      const playersArray = Object.values(data).filter(player => player.notes !== 'Total');
-      setPlayers(playersArray);
-    }
-    setLoading(false);
-  });
-
-  // Cleanup function to unsubscribe when component unmounts
-  return () => unsubscribe();
-}, []);
-
-  // Load scorers data
   useEffect(() => {
-    const fetchScorers = async () => {
+    const fetchFixtures = async () => {
       try {
-        const response = await fetch('https://api.jsonbin.io/v3/b/68283e668561e97a50159f8a');
-        const data = await response.json();
-        if (data && data.record && Array.isArray(data.record)) {
-          const cleanedScorers = data.record.map(scorer => ({
-            ...scorer,
-            forename: String(scorer.forename || '').trim(),
-            surname: String(scorer.surname || '').trim(),
-            goals: Number(scorer.goals) || 0
-          }));
-          setScorers(cleanedScorers);
-        }
-      } catch (error) {
-        console.error('Scorers fetch error:', error);
-      }
-    };
-    fetchScorers();
-  }, []);
-
-  // Load fixture data and calculate statistics
-  useEffect(() => {
-    const fetchFixturesAndCalculateStats = async () => {
-      try {
-        const response = await fetch('https://api.jsonbin.io/v3/b/68283e428561e97a50159f75', {
-          headers: {
-            'X-Master-Key': '$2a$10$mYvv7Zt9.2mHp3BSPb3J8.0qg8EZgxCeXGjnJhGQO.k9Qr5f5/b2C'
-          }
+        const response = await fetch('https://api.jsonbin.io/v3/b/68283e428561e97a50159f75/latest', {
+          headers: { 'X-Master-Key': '$2a$10$VTMAZsuNJaZxXb2dEFdOheJXXwRGD7GJj7e5vRp9jKvHqF51SN29e' }
         });
         const data = await response.json();
-        
-        if (data && data.record && Array.isArray(data.record)) {
-          setFixtures(data.record);
-          
-          // Calculate player statistics from fixture data
-          const calculatedStats = calculatePlayerStats(data.record);
-          const formattedStats = formatPlayerStats(calculatedStats);
-          
-          // Convert to lookup object for easy access
-          const statsLookup = {};
-          formattedStats.forEach(player => {
-            statsLookup[player.fullName] = player;
-          });
-          
-          setPlayerStats(statsLookup);
-        }
+        setFixtures(data.record);
       } catch (error) {
-        console.error('Error calculating player stats:', error);
+        console.error('Error fetching fixtures:', error);
       }
     };
-
-    fetchFixturesAndCalculateStats();
+    fetchFixtures();
   }, []);
 
-  // Helper function to convert Firebase name to fixture format
-  const convertToFixtureFormat = (firebasePlayer) => {
-    // Convert "George Johnston" to "G. Johnston" format
-    const firstInitial = firebasePlayer.forename.charAt(0).toUpperCase();
-    return `${firstInitial}. ${firebasePlayer.surname}`;
+  const getPlayerGoals = (player) => {
+    let totalGoals = 0;
+    fixtures.forEach(fixture => {
+      for (let i = 1; i <= 6; i++) {
+        const scorer = fixture[`scorer${i}`];
+        if (scorer && scorer.includes(`${player.forename.charAt(0)}. ${player.surname}`)) {
+          const matches = scorer.match(/\d+'/g);
+          totalGoals += matches ? matches.length : 1;
+        }
+      }
+    });
+    return totalGoals;
   };
 
-  // Helper functions
-  const getPlayerGoals = (firebasePlayer) => {
-    const fixtureFormatName = convertToFixtureFormat(firebasePlayer);
-    const scorer = scorers.find(s => 
-      `${s.forename} ${s.surname}`.toLowerCase() === fixtureFormatName.toLowerCase()
-    );
-    return scorer ? scorer.goals : 0;
+  const getPlayerStatistics = (player) => {
+    let stats = { appearances: 0, starts: 0, substitutes: 0, yellowCards: 0, redCards: 0 };
+    fixtures.forEach(fixture => {
+      let appeared = false;
+      for (let i = 1; i <= 11; i++) {
+        const starter = fixture[`starter${i}`];
+        if (starter && starter.includes(`${player.forename.charAt(0)}. ${player.surname}`)) {
+          stats.appearances++; stats.starts++; appeared = true; break;
+        }
+      }
+      if (!appeared) {
+        for (let i = 1; i <= 5; i++) {
+          const substitute = fixture[`substitute${i}`];
+          if (substitute && substitute.includes(`${player.forename.charAt(0)}. ${player.surname}`)) {
+            stats.appearances++; stats.substitutes++; break;
+          }
+        }
+      }
+      for (let i = 1; i <= 6; i++) {
+        const yellowCard = fixture[`yellowCard${i}`];
+        if (yellowCard && yellowCard.includes(`${player.forename.charAt(0)}. ${player.surname}`)) stats.yellowCards++;
+      }
+      for (let i = 1; i <= 2; i++) {
+        const redCard = fixture[`redCard${i}`];
+        if (redCard && redCard.includes(`${player.forename.charAt(0)}. ${player.surname}`)) stats.redCards++;
+      }
+    });
+    return stats;
   };
 
-  const getPlayerStatistics = (firebasePlayer) => {
-    const fixtureFormatName = convertToFixtureFormat(firebasePlayer);
-    const stats = playerStats[fixtureFormatName];
-    
-    if (stats) {
-      // Calculate league vs cup appearances
-      const leagueFixtures = fixtures.filter(f => f.competition === 'EFL League One').length;
-      const cupFixtures = fixtures.length - leagueFixtures;
-      const totalFixtures = fixtures.length;
+  useEffect(() => {
+  const publicRef = ref(database, 'squad2526p');
+  const unsubscribePublic = onValue(publicRef, (snapshot) => {
+    const publicData = snapshot.val();
+    if (publicData) {
+      const publicArray = Object.values(publicData).filter(player => player.notes !== 'Total');
       
-      return {
-        appearances: stats.totalAppearances,
-        starts: stats.totalStarts,
-        substitutes: stats.totalSubstitutes,
-        cards: stats.totalCards,
-        yellowCards: stats.yellowCards,
-        redCards: stats.redCards,
-        // New percentage calculations based on total season games
-        totalFixtures,
-        leagueFixtures,
-        cupFixtures,
-        appearancePercentage: totalFixtures > 0 ? Math.round((stats.totalAppearances / totalFixtures) * 100) : 0,
-        startsPercentage: totalFixtures > 0 ? Math.round((stats.totalStarts / totalFixtures) * 100) : 0
-      };
-    }
-    
-    return {
-      appearances: 0,
-      starts: 0,
-      substitutes: 0,
-      cards: 0,
-      yellowCards: 0,
-      redCards: 0,
-      totalFixtures: fixtures.length,
-      leagueFixtures: 0,
-      cupFixtures: 0,
-      appearancePercentage: 0,
-      startsPercentage: 0
-    };
-  };
-
-  // Calculate team totals
-  const calculateTeamTotals = (filteredPlayers = players) => {
-  let totalGoals = 0;
-  let totalCards = 0;
-  let activePlayers = 0;
-  
-  filteredPlayers.forEach(player => {
-    const goals = getPlayerGoals(player);
-    const stats = getPlayerStatistics(player);
-    
-    totalGoals += goals;
-    totalCards += stats.cards;
-    
-    // Count active players (not "Gone")
-    if (player.notes !== 'Gone') {
-      activePlayers++;
+      if (isAuthenticated) {
+        // Also fetch financial data and merge
+        const financialRef = ref(database, 'squad2526f');
+        const unsubscribeFinancial = onValue(financialRef, (snapshot) => {
+          const financialData = snapshot.val();
+          if (financialData) {
+            const financialArray = Object.values(financialData);
+            // Merge public and financial data by id
+            const mergedArray = publicArray.map(player => {
+              const financial = financialArray.find(f => f.id === player.id);
+              return financial ? { ...player, ...financial } : player;
+            });
+            setPlayers(mergedArray);
+          }
+          setLoading(false);
+        });
+        return () => unsubscribeFinancial();
+      } else {
+        setPlayers(publicArray);
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
     }
   });
-  
-  return {
-    totalGoals,
-    totalCards,
-    activePlayers,
-    totalFixtures: fixtures.length
+  return () => unsubscribePublic();
+}, [isAuthenticated]);
+
+  const calculateTeamTotals = (filteredPlayers) => {
+    return filteredPlayers.reduce((totals, player) => {
+      const goals = getPlayerGoals(player);
+      const stats = getPlayerStatistics(player);
+      totals.totalGoals += goals;
+      totals.totalCards += stats.yellowCards + stats.redCards;
+      return totals;
+    }, { totalGoals: 0, totalCards: 0, activePlayers: filteredPlayers.length, fixturesPlayed: fixtures.length });
   };
-};
-  if (loading) {
-    return <div style={{padding: '20px'}}>Loading squad...</div>;
-  }
 
- const filteredPlayers = players.filter(player => {
-  if (statusFilter === 'All') return true;
-  if (statusFilter === 'Available') return player.notes === 'Squad' || player.notes === 'Loan in';
-  return player.notes === statusFilter;
-});
+  if (loading) return <div style={{ padding: '20px' }}>Loading squad...</div>;
 
-const teamTotals = calculateTeamTotals(filteredPlayers);
+  const filteredPlayers = players.filter(player => {
+    if (statusFilter === 'All') return true;
+    if (statusFilter === 'Available') return player.notes === 'Squad' || player.notes === 'Loan in';
+    return player.notes === statusFilter;
+  });
+
+  const teamTotals = calculateTeamTotals(filteredPlayers);
+
+  const statBlock = (value, label, bgColor, textColor) => (
+    <div style={{
+      backgroundColor: bgColor,
+      borderRadius: '8px',
+      padding: '12px 8px',
+      textAlign: 'center',
+      flex: 1,
+      minWidth: '80px'
+    }}>
+      <div style={{ fontSize: '22px', fontWeight: 'bold', color: textColor }}>{value}</div>
+      <div style={{ fontSize: '12px', color: '#555', marginTop: '2px' }}>{label}</div>
+    </div>
+  );
 
   return (
-    <div style={{padding: '20px'}}>
-      <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
-        <img 
-          src="/bwfc.png" 
-          alt="BWFC" 
-          style={{ width: '50px', height: '50px', marginRight: '15px' }}
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
-        <h1 style={{ color: '#003f7f', margin: 0 }}>Squad 2025/26</h1>
-      </div>
-      
-      <div style={{ marginBottom: '15px', fontSize: '14px', color: '#666' }}>
-        {players.length} players . {fixtures.length} fixtures this season . {isAuthenticated ? 'Full financial data visible' : 'Public view - financial data hidden'}
-      </div>
-      
+    <div style={{ padding: '20px', fontFamily: 'sans-serif', maxWidth: '900px', margin: '0 auto' }}>
+
+      {/* Logo + Page Title */}
+<div style={{ textAlign: 'center', marginBottom: '8px' }}>
+  <img
+  src="/BWFC_logo2.jpeg"
+  alt="Bolton Wanderers FC"
+  style={{
+    width: '120px',
+    height: '120px',
+    objectFit: 'contain',
+    cursor: 'default',
+    userSelect: 'none'
+  }}
+  onClick={() => {
+    // Accepts clicks at steps 0, 1 (first two clicks) and 3, 4 (last two clicks)
+    const validClickSteps = [0, 1, 3, 4];
+    if (validClickSteps.includes(gestureStep)) {
+      const nextStep = gestureStep + 1;
+      setGestureStep(nextStep);
+      if (gestureTimer) clearTimeout(gestureTimer);
+      if (nextStep < 5) {
+        const t = setTimeout(() => setGestureStep(0), 3000);
+        setGestureTimer(t);
+      } else {
+        // Sequence complete — trigger login
+        setGestureStep(0);
+        onRequestLogin();
+      }
+    } else {
+      setGestureStep(0);
+    }
+  }}
+  onContextMenu={(e) => {
+    e.preventDefault();
+  }}
+  onMouseDown={(e) => {
+    if (gestureStep === 2) {
+      const pressTimer = setTimeout(() => {
+        setGestureStep(3);
+        if (gestureTimer) clearTimeout(gestureTimer);
+        const t = setTimeout(() => setGestureStep(0), 3000);
+        setGestureTimer(t);
+      }, 600);
+      e.currentTarget._pressTimer = pressTimer;
+    }
+  }}
+  onMouseUp={(e) => {
+    clearTimeout(e.currentTarget._pressTimer);
+  }}
+  onMouseLeave={(e) => {
+    clearTimeout(e.currentTarget._pressTimer);
+  }}
+  onTouchStart={(e) => {
+    if (gestureStep === 2) {
+      const pressTimer = setTimeout(() => {
+        setGestureStep(3);
+        if (gestureTimer) clearTimeout(gestureTimer);
+        const t = setTimeout(() => setGestureStep(0), 3000);
+        setGestureTimer(t);
+      }, 600);
+      e.currentTarget._pressTimer = pressTimer;
+    }
+  }}
+  onTouchEnd={(e) => {
+    clearTimeout(e.currentTarget._pressTimer);
+  }}
+/>
+</div>
+<h1 style={{ fontSize: '28px', fontWeight: 'bold', color: '#003f7f', marginBottom: '4px', textAlign: 'center' }}>
+  Squad 2025/26
+</h1>
+
       {/* Team Totals */}
-      <div
-        style={{
-          backgroundColor: 'white',
-          border: '2px solid #003f7f',
-          borderRadius: '8px',
-          padding: '20px',
-          marginBottom: '20px',
-          boxShadow: '0 4px 8px rgba(0,0,0,0.15)'
-        }}
-      >
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+      <div style={{
+        border: '2px solid #4682b4',
+        borderRadius: '10px',
+        padding: '16px 20px',
+        marginBottom: '20px',
+        backgroundColor: '#fff'
+      }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '14px', flexWrap: 'wrap', gap: '8px' }}>
           <div>
-            <h3 style={{ color: '#003f7f', margin: '0 0 5px 0', fontSize: '24px' }}>
-              Team Totals
-            </h3>
-            <div style={{ color: '#666', fontSize: '16px' }}>
-              Season 2025/26 . {teamTotals.activePlayers} active players
-            </div>
+            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#003f7f' }}>Team Totals</div>
           </div>
-          
-          <div style={{ textAlign: 'right', color: '#666', fontSize: '14px' }}>
-            <div>{teamTotals.totalGoals} total goals . {teamTotals.totalCards} total cards</div>
-            <div>{teamTotals.totalFixtures} fixtures played this season</div>
-          </div>
+      
         </div>
-
-        {/* Team Statistics Grid */}
-        <div style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-          gap: '10px'
-        }}>
-          <div style={{backgroundColor: '#e3f2fd', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-            <div style={{fontWeight: 'bold', color: '#1976d2', fontSize: '20px'}}>{teamTotals.totalGoals}</div>
-            <div style={{fontSize: '12px', color: '#666'}}>Total Goals</div>
-          </div>
-          
-          <div style={{backgroundColor: '#fff3e0', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-            <div style={{fontWeight: 'bold', color: '#f57c00', fontSize: '20px'}}>{teamTotals.totalCards}</div>
-            <div style={{fontSize: '12px', color: '#666'}}>Total Cards</div>
-          </div>
-          
-          <div style={{backgroundColor: '#e8f5e8', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-            <div style={{fontWeight: 'bold', color: '#388e3c', fontSize: '20px'}}>{teamTotals.activePlayers}</div>
-            <div style={{fontSize: '12px', color: '#666'}}>Active Players</div>
-          </div>
-          
-          <div style={{backgroundColor: '#f0f4f8', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-            <div style={{fontWeight: 'bold', color: '#546e7a', fontSize: '20px'}}>{teamTotals.totalFixtures}</div>
-            <div style={{fontSize: '12px', color: '#666'}}>Fixtures Played</div>
-          </div>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          {statBlock(teamTotals.totalGoals, 'Total Goals', '#ddeeff', '#1976d2')}
+          {statBlock(teamTotals.totalCards, 'Total Cards', '#fdefd4', '#e65100')}
+          {statBlock(teamTotals.activePlayers, 'Active Players', '#dff0df', '#2e7d32')}
+          {statBlock(teamTotals.fixturesPlayed, 'Fixtures Played', '#f0f0f0', '#444')}
         </div>
       </div>
 
-      {/* ADD THE DROPDOWN HERE */}
+      {/* Filter */}
       <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <label style={{ fontSize: '14px', color: '#666' }}>Filter by status:</label>
-        <select 
-          value={statusFilter} 
+        <label style={{ fontWeight: 'bold', color: '#003f7f', fontSize: '14px' }}>Filter by status:</label>
+        <select
+          value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          style={{
-            padding: '8px 12px',
-            borderRadius: '4px',
-            border: '1px solid #ddd',
-            fontSize: '14px'
-          }}
+          style={{ padding: '6px 10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '14px', cursor: 'pointer' }}
         >
           <option value="All">All Players</option>
           <option value="Squad">Squad</option>
           <option value="Loan in">Loan in</option>
-          <option value="Available">Squad + Loan in</option>
           <option value="On loan">On loan</option>
           <option value="Gone">Gone</option>
+          <option value="Available">Available (Squad + Loan in)</option>
         </select>
       </div>
 
-      {/* Individual Players */}
-      {players.filter(player => {
-  if (statusFilter === 'All') return true;
-  if (statusFilter === 'Available') return player.notes === 'Squad' || player.notes === 'Loan in';
-  return player.notes === statusFilter;
-}).map(player => {
+      {/* Player Cards */}
+      {filteredPlayers.map(player => {
         const goals = getPlayerGoals(player);
         const stats = getPlayerStatistics(player);
-        
+        const participationPercentage = fixtures.length > 0
+          ? Math.round((stats.appearances / fixtures.length) * 100)
+          : 0;
+        const totalCards = stats.yellowCards + stats.redCards;
+
         return (
-          <div
-            key={player.id}
-            style={{
-              backgroundColor: 'white',
-              border: '1px solid #ddd',
-              borderRadius: '8px',
-              padding: '20px',
-              marginBottom: '15px',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-            }}
-          >
-            {/* Player Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '15px' }}>
+          <div key={player.id} style={{
+            border: '1px solid #ddd',
+            borderRadius: '10px',
+            padding: '16px',
+            marginBottom: '14px',
+            backgroundColor: '#fff',
+            boxShadow: '0 1px 3px rgba(0,0,0,0.08)'
+          }}>
+            {/* Player header row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px', flexWrap: 'wrap', gap: '6px' }}>
               <div>
-                <h3 style={{ color: '#003f7f', margin: '0 0 5px 0', fontSize: '24px' }}>
+                <div style={{ fontSize: '20px', fontWeight: 'bold', color: '#003f7f' }}>
                   {player.forename} {player.surname}
-                </h3>
-                <div style={{ color: '#666', fontSize: '16px' }}>
-                  Status: {player.notes}
                 </div>
+                <div style={{ fontSize: '13px', color: '#777' }}>
+  Status: <span style={{ color: '#cc0000', fontWeight: 'bold' }}>{player.notes}</span>
+</div>
               </div>
-              
-              {/* Quick Stats Summary */}
-              <div style={{ textAlign: 'right', color: '#666', fontSize: '14px' }}>
-                <div>{goals} goals . {stats.appearances}/{stats.totalFixtures} games . {stats.cards} cards</div>
-                <div>{stats.appearancePercentage}% season participation</div>
-              </div>
+             
             </div>
 
-            {/* Statistics Grid */}
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
-              gap: '10px',
-              marginBottom: isAuthenticated ? '20px' : '0'
-            }}>
-              <div style={{backgroundColor: '#e3f2fd', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-                <div style={{fontWeight: 'bold', color: '#1976d2', fontSize: '20px'}}>{goals}</div>
-                <div style={{fontSize: '12px', color: '#666'}}>Goals</div>
-              </div>
-              
-              <div style={{backgroundColor: '#e8f5e8', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-                <div style={{fontWeight: 'bold', color: '#388e3c', fontSize: '20px'}}>{stats.appearances}</div>
-                <div style={{fontSize: '12px', color: '#666'}}>Appearances</div>
-              </div>
-              
-              <div style={{backgroundColor: '#f3e5f5', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-                <div style={{fontWeight: 'bold', color: '#7b1fa2', fontSize: '20px'}}>{stats.starts}</div>
-                <div style={{fontSize: '12px', color: '#666'}}>Starts</div>
-              </div>
-              
-              <div style={{backgroundColor: '#e8f5e8', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-                <div style={{fontWeight: 'bold', color: '#388e3c', fontSize: '20px'}}>{stats.substitutes}</div>
-                <div style={{fontSize: '12px', color: '#666'}}>Sub Apps</div>
-              </div>
-              
-              <div style={{backgroundColor: '#fff3e0', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-                <div style={{fontWeight: 'bold', color: '#f57c00', fontSize: '20px'}}>{stats.cards}</div>
-                <div style={{fontSize: '12px', color: '#666'}}>Cards</div>
-              </div>
-              
-              <div style={{backgroundColor: '#f0f4f8', padding: '12px', borderRadius: '6px', textAlign: 'center'}}>
-                <div style={{fontWeight: 'bold', color: '#546e7a', fontSize: '20px'}}>{stats.appearancePercentage}%</div>
-                <div style={{fontSize: '12px', color: '#666'}}>Season %</div>
-              </div>
+            {/* Stat blocks */}
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+              {statBlock(goals, 'Goals', '#ddeeff', '#1976d2')}
+              {statBlock(stats.appearances, 'Appearances', '#dff0df', '#2e7d32')}
+              {statBlock(stats.starts, 'Starts', '#f3e8f8', '#7b1fa2')}
+              {statBlock(stats.substitutes, 'Sub Apps', '#dff0df', '#2e7d32')}
+              {statBlock(totalCards, 'Cards', '#fdefd4', '#e65100')}
+              {statBlock(`${participationPercentage}%`, 'Season %', '#f0f0f0', '#444')}
             </div>
 
-            {/* Financial Information (Authenticated Only) */}
+            {/* Financial info (authenticated only) */}
             {isAuthenticated && (
               <div style={{
-                borderTop: '1px solid #eee',
-                paddingTop: '15px',
-                backgroundColor: '#f8f9fa',
-                margin: '0 -20px -20px -20px',
-                padding: '15px 20px',
-                borderRadius: '0 0 8px 8px'
+                backgroundColor: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: '5px',
+                padding: '10px',
+                marginTop: '12px'
               }}>
-                <div style={{ fontWeight: 'bold', color: '#003f7f', marginBottom: '10px' }}>
-                  Financial Details
+                <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#856404' }}>
+                  💰 Financial Details (Admin Only)
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>Weekly Wage</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                      Â£{player.currentWeeklyWage?.toLocaleString() || '0'}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '14px', color: '#666' }}>Total Value</div>
-                    <div style={{ fontSize: '18px', fontWeight: 'bold' }}>
-                      Â£{player.overallTotal?.toLocaleString() || '0'}
-                    </div>
-                  </div>
+                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '14px' }}>
+                  {player.currentWeeklyWage && (
+                    <div><strong>Weekly Wage:</strong> £{player.currentWeeklyWage.toLocaleString()}</div>
+                  )}
+                  {player.overallTotal && (
+                    <div><strong>Overall Total:</strong> £{player.overallTotal.toLocaleString()}</div>
+                  )}
                 </div>
               </div>
             )}
           </div>
         );
       })}
-      
-      {players.length === 0 && (
-        <div style={{
-          textAlign: 'center',
-          padding: '40px',
-          color: '#666',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px'
-        }}>
-          No players found. Please check that squad data is properly loaded.
+
+      {filteredPlayers.length === 0 && (
+        <div style={{ textAlign: 'center', fontSize: '18px', color: '#666', marginTop: '40px' }}>
+          No players found for the selected status.
         </div>
       )}
     </div>
   );
-};
+}
 
 export default EnhancedSquadList;

@@ -106,9 +106,9 @@ function FixtureDetail({ fixture, onBack }) {
     let cleanResult = result.replace(/\s+/g, ' ').trim();
     
     if (homeOrAway === 'Away') {
-      return `${cleanResult} (A)`;
+      return `${cleanResult} (Away)`;
     } else {
-      return `${cleanResult} (H)`;
+      return `${cleanResult} (Home)`;
     }
   };
 
@@ -133,7 +133,7 @@ function FixtureDetail({ fixture, onBack }) {
           cursor: 'pointer'
         }}
       >
-        â† Back to Fixtures
+        ←Back to Fixtures
       </button>
 
       {/* Match header */}
@@ -153,7 +153,7 @@ function FixtureDetail({ fixture, onBack }) {
         textAlign: 'center',
         marginBottom: '30px'
       }}>
-        {fixture.date} . {fixture.competition} . {formatResult(fixture.result, fixture.homeOrAway)}
+        {fixture.date} . {fixture.competition}
       </div>
 
       {/* Match Result */}
@@ -298,7 +298,7 @@ function FixtureDetail({ fixture, onBack }) {
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontWeight: 'bold', color: '#1976d2' }}>
-                    âš½ {goal.scorer}
+                    ⚽ {goal.scorer}
                   </div>
                   {goal.assist && (
                     <div style={{ fontSize: '14px', color: '#666', marginTop: '2px' }}>

@@ -67,7 +67,7 @@ function AppearanceStats() {
       </div>
       
       <div style={{ marginBottom: '15px', fontSize: '14px', color: '#666' }}>
-        Statistics calculated from {appearances.length > 0 ? 'fixture data' : 'loading...'} â€¢ 
+        Statistics calculated from {appearances.length > 0 ? 'fixture data' : 'loading...'} . 
         Showing players with appearance records
       </div>
       
@@ -111,9 +111,7 @@ function AppearanceStats() {
                   <div style={{ fontSize: '14px', opacity: 0.9 }}>
                     {player.totalStarts} starts, {player.totalSubstitutes} sub appearances
                   </div>
-                  <div style={{ fontSize: '12px', opacity: 0.8 }}>
-                    {player.completionRate}% completion rate
-                  </div>
+                  
                 </div>
               </div>
               <div style={{ textAlign: 'right' }}>

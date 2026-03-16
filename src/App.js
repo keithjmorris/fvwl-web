@@ -3,7 +3,8 @@ import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
 import EnhancedSquadList from './EnhancedSquadList';
 import FixtureList from './FixtureList';
-import Stats from './Stats'; 
+import Stats from './Stats';
+
 
 // Initialize Firebase
 const firebaseConfig = {
@@ -70,27 +71,7 @@ const navItems = [
           </span>
         ) : null}
         
-        <button
-          onClick={onShowLogin}
-          style={{
-            backgroundColor: 'transparent',
-            border: 'none',
-            color: user ? '#ffc107' : '#ffffff',
-            fontSize: '20px',
-            cursor: 'pointer',
-            padding: '5px',
-            borderRadius: '50%',
-            width: '40px',
-            height: '40px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            transition: 'all 0.3s ease'
-          }}
-          title={user ? 'Admin Settings' : 'Admin Login'}
-        >
-          ⚙️
-        </button>
+        
       </div>
     </nav>
   );
@@ -284,7 +265,7 @@ function App() {
   const renderView = () => {
     switch (activeView) {
       case 'squad':
-        return <EnhancedSquadList isAuthenticated={!!user} />;
+       return <EnhancedSquadList isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} />;
       case 'fixtures':
         return <FixtureList />;
       case 'stats':

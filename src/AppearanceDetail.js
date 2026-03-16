@@ -70,7 +70,7 @@ function AppearanceDetail({ player, onBack }) {
           cursor: 'pointer'
         }}
       >
-        â† Back to Appearances
+        ← Back to Appearances
       </button>
 
       {/* Player name */}
@@ -187,7 +187,7 @@ function AppearanceDetail({ player, onBack }) {
                       {appearance.opponent} {formatResult(appearance.result, appearance.homeOrAway)}
                     </div>
                     <div style={{ fontSize: '14px', color: '#6c757d', marginTop: '2px' }}>
-                      {appearance.date} â€¢ {appearance.competition}
+                      {appearance.date} . {appearance.competition}
                     </div>
                     <div style={{ 
                       fontSize: '14px', 
