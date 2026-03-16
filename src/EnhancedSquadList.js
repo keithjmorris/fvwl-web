@@ -164,7 +164,9 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin }) {
     height: '120px',
     objectFit: 'contain',
     cursor: 'default',
-    userSelect: 'none'
+    userSelect: 'none',
+  WebkitTouchCallout: 'none',
+  WebkitUserSelect: 'none'
   }}
   onClick={() => {
     // Accepts clicks at steps 0, 1 (first two clicks) and 3, 4 (last two clicks)

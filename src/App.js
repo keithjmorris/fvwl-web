@@ -66,10 +66,20 @@ const navItems = [
       {/* Admin section */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
         {user ? (
-          <span style={{ color: 'white', fontSize: '14px' }}>
-            Admin: {user.email.split('@')[0]}
-          </span>
-        ) : null}
+  <span
+    onClick={onShowLogin}
+    style={{
+      color: 'white',
+      fontSize: '14px',
+      cursor: 'pointer',
+      display: 'flex',
+      alignItems: 'center',
+      gap: '6px'
+    }}
+  >
+    ⚙️ Admin: {user.email.split('@')[0]}
+  </span>
+) : null}
         
         
       </div>
