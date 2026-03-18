@@ -7,6 +7,7 @@ function FixtureList() {
   const [error, setError] = useState(null);
   const [searchText, setSearchText] = useState('');
   const [selectedFixture, setSelectedFixture] = useState(null);
+  const [competitionFilter, setCompetitionFilter] = useState('EFL League One');
 
   useEffect(() => {
     fetchFixtures();
@@ -25,9 +26,73 @@ function FixtureList() {
     }
   };
 
-  const filteredFixtures = fixtures.filter(fixture =>
-    searchText === '' || fixture.opponent.toLowerCase().includes(searchText.toLowerCase())
-  );
+  const calculateSummary = (fixturesToSummarise) => {
+  let wins = 0, draws = 0, losses = 0;
+  let goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
+  let totalShots = 0, shotsCount = 0;
+  let totalShotsonTarget = 0, shotsonTargetCount = 0;
+  let totalXg = 0, xgCount = 0;
+  let totalXga = 0, xgaCount = 0;
+  let leaguePosition = null;
+
+  fixturesToSummarise.forEach(fixture => {
+    const bwfc = parseInt(fixture.BWFCScore);
+    const opp = parseInt(fixture.opponentScore);
+
+    if (!isNaN(bwfc) && !isNaN(opp)) {
+      goalsFor += bwfc;
+      goalsAgainst += opp;
+      if (opp === 0) cleanSheets++;
+      if (bwfc > opp) wins++;
+      else if (bwfc === opp) draws++;
+      else losses++;
+    }
+
+    if (fixture.shots && fixture.shots !== '') {
+      totalShots += parseFloat(fixture.shots);
+      shotsCount++;
+    }
+    if (fixture.shotsonTarget && fixture.shotsonTarget !== '') {
+      totalShotsonTarget += parseFloat(fixture.shotsonTarget);
+      shotsonTargetCount++;
+    }
+    if (fixture.xg && fixture.xg !== '') {
+      totalXg += parseFloat(fixture.xg);
+      xgCount++;
+    }
+    if (fixture.xga && fixture.xga !== '') {
+      totalXga += parseFloat(fixture.xga);
+      xgaCount++;
+    }
+    if (fixture.leaguePosition && fixture.leaguePosition !== '') {
+      leaguePosition = fixture.leaguePosition;
+    }
+  });
+
+  const points = (wins * 3) + draws;
+  const gamesPlayed = wins + draws + losses;
+
+  return {
+    wins, draws, losses, gamesPlayed,
+    goalsFor, goalsAgainst, cleanSheets,
+    points,
+    pointsPerGame: gamesPlayed > 0 ? (points / gamesPlayed).toFixed(2) : '0.00',
+    avgShots: shotsCount > 0 ? (totalShots / shotsCount).toFixed(1) : 'N/A',
+    avgShotsonTarget: shotsonTargetCount > 0 ? (totalShotsonTarget / shotsonTargetCount).toFixed(1) : 'N/A',
+    avgXg: xgCount > 0 ? (totalXg / xgCount).toFixed(2) : 'N/A',
+    avgXga: xgaCount > 0 ? (totalXga / xgaCount).toFixed(2) : 'N/A',
+    leaguePosition
+  };
+};
+
+  const filteredFixtures = fixtures.filter(fixture => {
+  const matchesSearch = searchText === '' || fixture.opponent.toLowerCase().includes(searchText.toLowerCase());
+  const matchesCompetition = competitionFilter === 'All' || fixture.competition === competitionFilter;
+  return matchesSearch && matchesCompetition;
+});
+
+const summary = calculateSummary(filteredFixtures);
+const isLeague = competitionFilter === 'EFL League One';
 
   const getResultColor = (fixture) => {
     if (!fixture.result) return '#999';
@@ -83,6 +148,105 @@ function FixtureList() {
           }}
         />
       </div>
+
+      {/* Competition Filter */}
+<div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+  <label style={{ fontWeight: 'bold', color: '#003f7f', fontSize: '14px' }}>Filter by competition:</label>
+  <select
+    value={competitionFilter}
+    onChange={(e) => setCompetitionFilter(e.target.value)}
+    style={{ padding: '6px 10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '14px', cursor: 'pointer' }}
+  >
+    <option value="All">All Competitions</option>
+    <option value="EFL League One">EFL League One</option>
+    <option value="Carabao League Cup">Carabao League Cup</option>
+    <option value="Vertu EFL Trophy">Vertu EFL Trophy</option>
+    <option value="FA Cup">FA Cup</option>
+  </select>
+</div>
+
+{/* Summary Box */}
+<div style={{
+  border: '2px solid #4682b4',
+  borderRadius: '10px',
+  padding: '16px 20px',
+  marginBottom: '20px',
+  backgroundColor: '#fff'
+}}>
+  <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#003f7f', marginBottom: '14px' }}>
+    Season Summary {competitionFilter !== 'All' ? `— ${competitionFilter}` : '— All Competitions'}
+  </div>
+
+  {/* Results Row */}
+  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+    {[
+      { value: summary.gamesPlayed, label: 'Played', bg: '#f0f0f0', color: '#444' },
+      { value: summary.wins, label: 'Wins', bg: '#dff0df', color: '#2e7d32' },
+      { value: summary.draws, label: 'Draws', bg: '#f0f0f0', color: '#444' },
+      { value: summary.losses, label: 'Losses', bg: '#fde8e8', color: '#c62828' },
+      { value: summary.goalsFor, label: 'Goals For', bg: '#ddeeff', color: '#1976d2' },
+      { value: summary.goalsAgainst, label: 'Goals Against', bg: '#fde8e8', color: '#c62828' },
+      { value: summary.cleanSheets, label: 'Clean Sheets', bg: '#dff0df', color: '#2e7d32' },
+    ].map(item => (
+      <div key={item.label} style={{
+        backgroundColor: item.bg,
+        borderRadius: '8px',
+        padding: '10px 8px',
+        textAlign: 'center',
+        flex: 1,
+        minWidth: '70px'
+      }}>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', color: item.color }}>{item.value}</div>
+        <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{item.label}</div>
+      </div>
+    ))}
+  </div>
+
+  {/* League specific row */}
+  {isLeague && (
+    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
+      {[
+        { value: summary.points, label: 'Points', bg: '#ddeeff', color: '#1976d2' },
+        { value: summary.pointsPerGame, label: 'Pts/Game', bg: '#ddeeff', color: '#1976d2' },
+        { value: summary.leaguePosition ? summary.leaguePosition : 'N/A', label: 'Position', bg: '#fdefd4', color: '#e65100' },
+      ].map(item => (
+        <div key={item.label} style={{
+          backgroundColor: item.bg,
+          borderRadius: '8px',
+          padding: '10px 8px',
+          textAlign: 'center',
+          flex: 1,
+          minWidth: '70px'
+        }}>
+          <div style={{ fontSize: '20px', fontWeight: 'bold', color: item.color }}>{item.value}</div>
+          <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{item.label}</div>
+        </div>
+      ))}
+    </div>
+  )}
+
+  {/* Averages row */}
+  <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+    {[
+      { value: summary.avgShots, label: 'Avg Shots', bg: '#f3e8f8', color: '#7b1fa2' },
+      { value: summary.avgShotsonTarget, label: 'Avg On Target', bg: '#f3e8f8', color: '#7b1fa2' },
+      { value: summary.avgXg, label: 'Avg xG', bg: '#fdefd4', color: '#e65100' },
+      { value: summary.avgXga, label: 'Avg xGA', bg: '#fde8e8', color: '#c62828' },
+    ].map(item => (
+      <div key={item.label} style={{
+        backgroundColor: item.bg,
+        borderRadius: '8px',
+        padding: '10px 8px',
+        textAlign: 'center',
+        flex: 1,
+        minWidth: '70px'
+      }}>
+        <div style={{ fontSize: '20px', fontWeight: 'bold', color: item.color }}>{item.value}</div>
+        <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{item.label}</div>
+      </div>
+    ))}
+  </div>
+</div>
 
       {/* Fixtures List */}
       <div style={{ maxWidth: '800px' }}>

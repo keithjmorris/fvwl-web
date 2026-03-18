@@ -19,7 +19,7 @@ const database = getDatabase(app);
 function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
   const [players, setPlayers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [statusFilter, setStatusFilter] = useState('All');
+  const [statusFilter, setStatusFilter] = useState('Available');
   const [fixtures, setFixtures] = useState([]);
   const [gestureStep, setGestureStep] = useState(0);
   const [gestureTimer, setGestureTimer] = useState(null);
@@ -267,12 +267,12 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
           onChange={(e) => setStatusFilter(e.target.value)}
           style={{ padding: '6px 10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '14px', cursor: 'pointer' }}
         >
+          <option value="Available">Available (Squad + Loan in)</option>
           <option value="All">All Players</option>
           <option value="Squad">Squad</option>
           <option value="Loan in">Loan in</option>
           <option value="On loan">On loan</option>
           <option value="Gone">Gone</option>
-          <option value="Available">Available (Squad + Loan in)</option>
         </select>
       </div>
 
