@@ -40,6 +40,65 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
     fetchFixtures();
   }, []);
 
+  const calculateSummary = (fixturesToSummarise) => {
+  let wins = 0, draws = 0, losses = 0;
+  let goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
+  let totalShots = 0, shotsCount = 0;
+  let totalShotsOnTarget = 0, shotsOnTargetCount = 0;
+  let totalXg = 0, xgCount = 0;
+  let totalXga = 0, xgaCount = 0;
+  let leaguePosition = null;
+
+  fixturesToSummarise.forEach(fixture => {
+    const bwfc = parseInt(fixture.BWFCScore);
+    const opp = parseInt(fixture.opponentScore);
+
+    if (!isNaN(bwfc) && !isNaN(opp)) {
+      goalsFor += bwfc;
+      goalsAgainst += opp;
+      if (opp === 0) cleanSheets++;
+      if (bwfc > opp) wins++;
+      else if (bwfc === opp) draws++;
+      else losses++;
+    }
+
+    if (fixture.shots && fixture.shots !== '') {
+      totalShots += parseFloat(fixture.shots);
+      shotsCount++;
+    }
+    if (fixture.shotsOnTarget && fixture.shotsOnTarget !== '') {
+      totalShotsOnTarget += parseFloat(fixture.shotsOnTarget);
+      shotsOnTargetCount++;
+    }
+    if (fixture.xg && fixture.xg !== '') {
+      totalXg += parseFloat(fixture.xg);
+      xgCount++;
+    }
+    if (fixture.xga && fixture.xga !== '') {
+      totalXga += parseFloat(fixture.xga);
+      xgaCount++;
+    }
+    if (fixture.leaguePosition && fixture.leaguePosition !== '') {
+      leaguePosition = fixture.leaguePosition;
+    }
+  });
+
+  const points = (wins * 3) + draws;
+  const gamesPlayed = wins + draws + losses;
+
+  return {
+    wins, draws, losses, gamesPlayed,
+    goalsFor, goalsAgainst, cleanSheets,
+    points,
+    pointsPerGame: gamesPlayed > 0 ? (points / gamesPlayed).toFixed(2) : '0.00',
+    avgShots: shotsCount > 0 ? (totalShots / shotsCount).toFixed(1) : 'N/A',
+    avgShotsOnTarget: shotsOnTargetCount > 0 ? (totalShotsOnTarget / shotsOnTargetCount).toFixed(1) : 'N/A',
+    avgXg: xgCount > 0 ? (totalXg / xgCount).toFixed(2) : 'N/A',
+    avgXga: xgaCount > 0 ? (totalXga / xgaCount).toFixed(2) : 'N/A',
+    leaguePosition
+  };
+};
+
   const getPlayerGoals = (player) => {
     let totalGoals = 0;
     fixtures.forEach(fixture => {
@@ -83,6 +142,67 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
     });
     return stats;
   };
+
+  const parseMinute = (timeStr) => {
+  if (!timeStr) return null;
+  const clean = timeStr.replace(/'/g, '').trim();
+  if (clean.includes('+')) {
+    const parts = clean.split('+');
+    return parseInt(parts[0]) + parseInt(parts[1]);
+  }
+  return parseInt(clean);
+};
+
+const getPlayerMinutes = (player) => {
+  const playerRef = `${player.forename.charAt(0)}. ${player.surname}`;
+  let totalMinutes = 0;
+
+  fixtures.forEach(fixture => {
+    const MATCH_DURATION = 90;
+    let minutesThisGame = 0;
+    let playedThisGame = false;
+
+    // Check if player started
+    for (let i = 1; i <= 11; i++) {
+      const starter = fixture[`starter${i}`];
+      if (starter && starter.includes(playerRef)) {
+        // Started — assume full game unless substituted off
+        minutesThisGame = MATCH_DURATION;
+        playedThisGame = true;
+        break;
+      }
+    }
+
+    // Check if player was substituted off (reduces minutes if they started)
+    for (let i = 1; i <= 5; i++) {
+      const subOff = fixture[`substitutedPlayer${i}`];
+      const subTime = fixture[`substituteTime${i}`];
+      if (subOff && subOff.includes(playerRef) && subTime) {
+        const minute = parseMinute(subTime);
+        if (minute !== null) minutesThisGame = minute;
+        break;
+      }
+    }
+
+    // Check if player came on as substitute (adds minutes from that point)
+    for (let i = 1; i <= 5; i++) {
+      const subOn = fixture[`substitute${i}`];
+      const subTime = fixture[`substituteTime${i}`];
+      if (subOn && subOn.includes(playerRef) && subTime) {
+        const minute = parseMinute(subTime);
+        if (minute !== null) {
+          minutesThisGame = MATCH_DURATION - minute;
+          playedThisGame = true;
+        }
+        break;
+      }
+    }
+
+    if (playedThisGame) totalMinutes += minutesThisGame;
+  });
+
+  return totalMinutes;
+};
 
   useEffect(() => {
   const publicRef = ref(database, 'squad2526p');
@@ -321,27 +441,42 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
             </div>
 
             {/* Financial info (authenticated only) */}
-            {isAuthenticated && (
-              <div style={{
-                backgroundColor: '#fff3cd',
-                border: '1px solid #ffc107',
-                borderRadius: '5px',
-                padding: '10px',
-                marginTop: '12px'
-              }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '5px', color: '#856404' }}>
-                  💰 Financial Details (Admin Only)
-                </div>
-                <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '14px' }}>
-                  {player.currentWeeklyWage && (
-                    <div><strong>Weekly Wage:</strong> £{player.currentWeeklyWage.toLocaleString()}</div>
-                  )}
-                  {player.overallTotal && (
-                    <div><strong>Overall Total:</strong> £{player.overallTotal.toLocaleString()}</div>
-                  )}
-                </div>
-              </div>
-            )}
+{isAuthenticated && (
+  <div style={{
+    backgroundColor: '#fff3cd',
+    border: '1px solid #ffc107',
+    borderRadius: '5px',
+    padding: '10px',
+    marginTop: '12px'
+  }}>
+    <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#856404' }}>
+      💰 Financial Details (Admin Only)
+    </div>
+    <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '14px', marginBottom: '8px' }}>
+      {player.currentWeeklyWage && (
+        <div><strong>Weekly Wage:</strong> £{player.currentWeeklyWage.toLocaleString()}</div>
+      )}
+      {player.overallTotal && (
+        <div><strong>Overall Total:</strong> £{player.overallTotal.toLocaleString()}</div>
+      )}
+    </div>
+    {(() => {
+      const minutes = getPlayerMinutes(player);
+      const costPerMinute = player.overallTotal && minutes > 0
+        ? (player.overallTotal / minutes).toFixed(2)
+        : null;
+      return (
+        <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '14px', borderTop: '1px solid #ffc107', paddingTop: '8px' }}>
+          <div><strong>Minutes Played:</strong> {minutes}</div>
+          {costPerMinute && (
+            <div><strong>Cost per Minute:</strong> £{costPerMinute}</div>
+          )}
+          
+        </div>
+      );
+    })()}
+  </div>
+)}
           </div>
         );
       })}

@@ -277,7 +277,7 @@ function App() {
       case 'squad':
       return <EnhancedSquadList isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} user={user} />;
       case 'fixtures':
-        return <FixtureList />;
+  return <FixtureList isAuthenticated={!!user} />;
       case 'stats':
         return <Stats />;
       default:

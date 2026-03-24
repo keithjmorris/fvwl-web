@@ -76,6 +76,7 @@ function AppearanceDetail({ player, onBack }) {
       {/* Player name */}
       <div style={{
         fontSize: '28px',
+
         fontWeight: 'bold',
         color: '#003f7f',
         textAlign: 'center',
