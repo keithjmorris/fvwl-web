@@ -2,9 +2,7 @@ import React, { useState } from 'react';
 import ScorerList from './ScorerList';
 import AppearanceStats from './AppearanceStats';
 import DisciplinaryStats from './DisciplinaryStats';
-// We'll create these components next
-// import AppearanceStats from './AppearanceStats';
-// import DisciplinaryStats from './DisciplinaryStats';
+import ImpactStats from './ImpactStats';
 
 function Stats() {
   const [activeStatsView, setActiveStatsView] = useState('scorers');
@@ -12,17 +10,20 @@ function Stats() {
   const statsNavItems = [
     { key: 'scorers', label: 'Scorers' },
     { key: 'appearances', label: 'Appearances' },
-    { key: 'disciplinary', label: 'Disciplinary' }
+    { key: 'disciplinary', label: 'Disciplinary' },
+    { key: 'impact', label: 'Impact' }
   ];
 
   const renderStatsView = () => {
     switch (activeStatsView) {
       case 'scorers':
         return <ScorerList />;
-    case 'appearances':
+      case 'appearances':
         return <AppearanceStats />;
-    case 'disciplinary':
+      case 'disciplinary':
         return <DisciplinaryStats />;
+      case 'impact':
+        return <ImpactStats />;
       default:
         return <ScorerList />;
     }
