@@ -41,11 +41,42 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
     fetchFixtures();
   }, []);
 
+  const parseMinute = (timeStr) => {
+    if (!timeStr) return null;
+    const clean = timeStr.replace(/'/g, '').trim();
+    if (clean.includes('+')) {
+      const parts = clean.split('+');
+      return parseInt(parts[0]) + parseInt(parts[1]);
+    }
+    return parseInt(clean);
+  };
+
+  const getRelevantFixtures = () => {
+    if (competitionFilter === 'All') return fixtures;
+    if (competitionFilter === 'League') return fixtures.filter(f => f.competition === 'EFL League One');
+    return fixtures.filter(f => f.competition !== 'EFL League One');
+  };
+
+  const playerAppearedInCompetition = (player) => {
+    if (competitionFilter === 'All') return true;
+    const playerRef = `${player.forename.charAt(0)}. ${player.surname}`;
+    const relevantFixtures = getRelevantFixtures();
+    return relevantFixtures.some(fixture => {
+      for (let i = 1; i <= 11; i++) {
+        if (fixture[`starter${i}`] && fixture[`starter${i}`].includes(playerRef)) return true;
+      }
+      for (let i = 1; i <= 5; i++) {
+        if (fixture[`substitute${i}`] && fixture[`substitute${i}`].includes(playerRef)) return true;
+      }
+      return false;
+    });
+  };
+
   const getPlayerGoals = (player) => {
     let totalGoals = 0;
     const relevantFixtures = getRelevantFixtures();
     relevantFixtures.forEach(fixture => {
-      for (let i = 1; i <= 6; i++) {
+      for (let i = 1; i <= 8; i++) {
         const scorer = fixture[`scorer${i}`];
         if (scorer && scorer.includes(`${player.forename.charAt(0)}. ${player.surname}`)) {
           const matches = scorer.match(/\d+'/g);
@@ -87,16 +118,6 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
     return stats;
   };
 
-  const parseMinute = (timeStr) => {
-    if (!timeStr) return null;
-    const clean = timeStr.replace(/'/g, '').trim();
-    if (clean.includes('+')) {
-      const parts = clean.split('+');
-      return parseInt(parts[0]) + parseInt(parts[1]);
-    }
-    return parseInt(clean);
-  };
-
   const getPlayerMinutes = (player) => {
     const playerRef = `${player.forename.charAt(0)}. ${player.surname}`;
     let totalMinutes = 0;
@@ -106,6 +127,7 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
       let minutesThisGame = 0;
       let playedThisGame = false;
 
+      // Check if player started
       for (let i = 1; i <= 11; i++) {
         const starter = fixture[`starter${i}`];
         if (starter && starter.includes(playerRef)) {
@@ -115,6 +137,7 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
         }
       }
 
+      // Check if player was substituted off
       for (let i = 1; i <= 5; i++) {
         const subOff = fixture[`substitutedPlayer${i}`];
         const subTime = fixture[`substituteTime${i}`];
@@ -125,6 +148,7 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
         }
       }
 
+      // Check if player came on as substitute
       for (let i = 1; i <= 5; i++) {
         const subOn = fixture[`substitute${i}`];
         const subTime = fixture[`substituteTime${i}`];
@@ -138,34 +162,21 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
         }
       }
 
+      // Check if player was sent off (red card ends their time on pitch)
+      for (let i = 1; i <= 2; i++) {
+        const redCard = fixture[`redCard${i}`];
+        const redCardTime = fixture[`redCardTime${i}`];
+        if (redCard && redCard.includes(playerRef) && redCardTime) {
+          const minute = parseMinute(redCardTime);
+          if (minute !== null) minutesThisGame = minute;
+          break;
+        }
+      }
+
       if (playedThisGame) totalMinutes += minutesThisGame;
     });
 
     return totalMinutes;
-  };
-
-  // Returns fixtures filtered by the competition filter
-  const getRelevantFixtures = () => {
-    if (competitionFilter === 'All') return fixtures;
-    if (competitionFilter === 'League') return fixtures.filter(f => f.competition === 'EFL League One');
-    // 'Other' = all competitions except EFL League One
-    return fixtures.filter(f => f.competition !== 'EFL League One');
-  };
-
-  // Returns true if a player appeared in at least one fixture matching the competition filter
-  const playerAppearedInCompetition = (player) => {
-    if (competitionFilter === 'All') return true;
-    const playerRef = `${player.forename.charAt(0)}. ${player.surname}`;
-    const relevantFixtures = getRelevantFixtures();
-    return relevantFixtures.some(fixture => {
-      for (let i = 1; i <= 11; i++) {
-        if (fixture[`starter${i}`] && fixture[`starter${i}`].includes(playerRef)) return true;
-      }
-      for (let i = 1; i <= 5; i++) {
-        if (fixture[`substitute${i}`] && fixture[`substitute${i}`].includes(playerRef)) return true;
-      }
-      return false;
-    });
   };
 
   useEffect(() => {
@@ -228,16 +239,12 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
   }
 
   const filteredPlayers = players.filter(player => {
-    // Status filter
     const statusMatch = (() => {
       if (statusFilter === 'All') return true;
       if (statusFilter === 'Available') return player.notes === 'Squad' || player.notes === 'Loan in';
       return player.notes === statusFilter;
     })();
-
-    // Competition filter
     const competitionMatch = playerAppearedInCompetition(player);
-
     return statusMatch && competitionMatch;
   });
 
@@ -361,7 +368,6 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
             <option value="Gone">Gone</option>
           </select>
         </div>
-
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
           <label style={{ fontWeight: 'bold', color: '#003f7f', fontSize: '14px' }}>Competition:</label>
           <select
@@ -427,14 +433,14 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
                 marginTop: '12px'
               }}>
                 <div style={{ fontWeight: 'bold', marginBottom: '8px', color: '#856404' }}>
-                  ðŸ’° Financial Details (Admin Only)
+                  Financial Details (Admin Only)
                 </div>
                 <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '14px', marginBottom: '8px' }}>
                   {player.currentWeeklyWage && (
-                    <div><strong>Weekly Wage:</strong> Â£{player.currentWeeklyWage.toLocaleString()}</div>
+                    <div><strong>Weekly Wage:</strong> &pound;{player.currentWeeklyWage.toLocaleString()}</div>
                   )}
                   {player.overallTotal && (
-                    <div><strong>Overall Total:</strong> Â£{player.overallTotal.toLocaleString()}</div>
+                    <div><strong>Overall Total:</strong> &pound;{player.overallTotal.toLocaleString()}</div>
                   )}
                 </div>
                 {(() => {
@@ -446,7 +452,7 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
                     <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap', fontSize: '14px', borderTop: '1px solid #ffc107', paddingTop: '8px' }}>
                       <div><strong>Minutes Played:</strong> {minutes}</div>
                       {costPerMinute && (
-                        <div><strong>Cost per Minute:</strong> Â£{costPerMinute}</div>
+                        <div><strong>Cost per Minute:</strong> &pound;{costPerMinute}</div>
                       )}
                     </div>
                   );
