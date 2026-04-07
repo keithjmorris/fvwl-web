@@ -2,14 +2,6 @@ import React from 'react';
 
 function ScorerDetail({ playerRef, fixtures = [], onBack }) {
 
-  const competitionGroups = [
-    { key: 'EFL League One', label: 'League' },
-    { key: 'FA Cup', label: 'FA Cup' },
-    { key: 'Caraboa League Cup', label: 'EFL Cup' },
-    { key: 'EFL Trophy', label: 'EFL Trophy' },
-    { key: 'Vertu EFL Trophy', label: 'EFL Trophy' },
-  ];
-
   // Build a list of every goal this player scored, grouped by competition
   const buildGoalList = () => {
     const goalsByCompetition = {};

@@ -41,6 +41,21 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
     fetchFixtures();
   }, []);
 
+  // Fetch all squad data from squad2526f â€” it contains all fields
+  // Financial fields are only displayed when isAuthenticated is true
+  useEffect(() => {
+    const financialRef = ref(database, 'squad2526f');
+    const unsubscribe = onValue(financialRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const playersArray = Object.values(data).filter(player => player.notes !== 'Total');
+        setPlayers(playersArray);
+      }
+      setLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
   const parseMinute = (timeStr) => {
     if (!timeStr) return null;
     const clean = timeStr.replace(/'/g, '').trim();
@@ -178,39 +193,6 @@ function EnhancedSquadList({ isAuthenticated, onRequestLogin, user }) {
 
     return totalMinutes;
   };
-
-  useEffect(() => {
-    const publicRef = ref(database, 'squad2526p');
-    const unsubscribePublic = onValue(publicRef, (snapshot) => {
-      const publicData = snapshot.val();
-      if (publicData) {
-        const publicArray = Object.values(publicData).filter(player => player.notes !== 'Total');
-
-        if (isAuthenticated) {
-          const financialRef = ref(database, 'squad2526f');
-          const unsubscribeFinancial = onValue(financialRef, (snapshot) => {
-            const financialData = snapshot.val();
-            if (financialData) {
-              const financialArray = Object.values(financialData);
-              const mergedArray = publicArray.map(player => {
-                const financial = financialArray.find(f => f.id === player.id);
-                return financial ? { ...player, ...financial } : player;
-              });
-              setPlayers(mergedArray);
-            }
-            setLoading(false);
-          });
-          return () => unsubscribeFinancial();
-        } else {
-          setPlayers(publicArray);
-          setLoading(false);
-        }
-      } else {
-        setLoading(false);
-      }
-    });
-    return () => unsubscribePublic();
-  }, [isAuthenticated]);
 
   const calculateTeamTotals = (filteredPlayers) => {
     const relevantFixtures = getRelevantFixtures();
