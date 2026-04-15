@@ -27,6 +27,7 @@ function FixtureList() {
   };
 
   const calculateSummary = (fixturesToSummarise) => {
+    const playedFixtures = fixturesToSummarise.filter(f => f.result && f.result !== '');
     let wins = 0, draws = 0, losses = 0;
     let goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
     let totalShots = 0, shotsCount = 0;
@@ -39,7 +40,7 @@ function FixtureList() {
     let totalXga = 0, xgaCount = 0;
     let leaguePosition = null;
 
-    fixturesToSummarise.forEach(fixture => {
+    playedFixtures.forEach(fixture => {
       const bwfc = parseInt(fixture.BWFCScore);
       const opp = parseInt(fixture.opponentScore);
 
