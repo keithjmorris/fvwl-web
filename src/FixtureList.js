@@ -1,33 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import FixtureDetail from './FixtureDetail';
 
-function FixtureList() {
-  const [fixtures, setFixtures] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+function FixtureList({ fixtures = [] }) {
   const [searchText, setSearchText] = useState('');
   const [selectedFixture, setSelectedFixture] = useState(null);
   const [competitionFilter, setCompetitionFilter] = useState('EFL League One');
 
-  useEffect(() => {
-    fetchFixtures();
-  }, []);
-
-  const fetchFixtures = async () => {
-    try {
-      const response = await fetch('https://api.jsonbin.io/v3/b/68283e428561e97a50159f75');
-      const data = await response.json();
-      setFixtures(data.record);
-      setLoading(false);
-    } catch (error) {
-      setError('Failed to load fixtures');
-      setLoading(false);
-      console.error('Error fetching fixtures:', error);
-    }
-  };
-
   const calculateSummary = (fixturesToSummarise) => {
     const playedFixtures = fixturesToSummarise.filter(f => f.result && f.result !== '');
+
     let wins = 0, draws = 0, losses = 0;
     let goalsFor = 0, goalsAgainst = 0, cleanSheets = 0;
     let totalShots = 0, shotsCount = 0;
@@ -53,41 +34,15 @@ function FixtureList() {
         else losses++;
       }
 
-      if (fixture.shots && fixture.shots !== '') {
-        totalShots += parseFloat(fixture.shots);
-        shotsCount++;
-      }
-      if (fixture.shotsonTarget && fixture.shotsonTarget !== '') {
-        totalShotsonTarget += parseFloat(fixture.shotsonTarget);
-        shotsonTargetCount++;
-      }
-      if (fixture.oppositionShots && fixture.oppositionShots !== '') {
-        totalOppShots += parseFloat(fixture.oppositionShots);
-        oppShotsCount++;
-      }
-      if (fixture.oppositionShotonTarget && fixture.oppositionShotonTarget !== '') {
-        totalOppShotsOnTarget += parseFloat(fixture.oppositionShotonTarget);
-        oppShotsOnTargetCount++;
-      }
-      if (fixture.touchesOppositionBox && fixture.touchesOppositionBox !== '') {
-        totalTouchesOppBox += parseFloat(fixture.touchesOppositionBox);
-        touchesOppBoxCount++;
-      }
-      if (fixture.touchesOurBox && fixture.touchesOurBox !== '') {
-        totalTouchesOurBox += parseFloat(fixture.touchesOurBox);
-        touchesOurBoxCount++;
-      }
-      if (fixture.xg && fixture.xg !== '') {
-        totalXg += parseFloat(fixture.xg);
-        xgCount++;
-      }
-      if (fixture.xga && fixture.xga !== '') {
-        totalXga += parseFloat(fixture.xga);
-        xgaCount++;
-      }
-      if (fixture.leaguePosition && fixture.leaguePosition !== '') {
-        leaguePosition = fixture.leaguePosition;
-      }
+      if (fixture.shots && fixture.shots !== '') { totalShots += parseFloat(fixture.shots); shotsCount++; }
+      if (fixture.shotsonTarget && fixture.shotsonTarget !== '') { totalShotsonTarget += parseFloat(fixture.shotsonTarget); shotsonTargetCount++; }
+      if (fixture.oppositionShots && fixture.oppositionShots !== '') { totalOppShots += parseFloat(fixture.oppositionShots); oppShotsCount++; }
+      if (fixture.oppositionShotonTarget && fixture.oppositionShotonTarget !== '') { totalOppShotsOnTarget += parseFloat(fixture.oppositionShotonTarget); oppShotsOnTargetCount++; }
+      if (fixture.touchesOppositionBox && fixture.touchesOppositionBox !== '') { totalTouchesOppBox += parseFloat(fixture.touchesOppositionBox); touchesOppBoxCount++; }
+      if (fixture.touchesOurBox && fixture.touchesOurBox !== '') { totalTouchesOurBox += parseFloat(fixture.touchesOurBox); touchesOurBoxCount++; }
+      if (fixture.xg && fixture.xg !== '') { totalXg += parseFloat(fixture.xg); xgCount++; }
+      if (fixture.xga && fixture.xga !== '') { totalXga += parseFloat(fixture.xga); xgaCount++; }
+      if (fixture.leaguePosition && fixture.leaguePosition !== '') { leaguePosition = fixture.leaguePosition; }
     });
 
     const points = (wins * 3) + draws;
@@ -95,8 +50,7 @@ function FixtureList() {
 
     return {
       wins, draws, losses, gamesPlayed,
-      goalsFor, goalsAgainst, cleanSheets,
-      points,
+      goalsFor, goalsAgainst, cleanSheets, points,
       pointsPerGame: gamesPlayed > 0 ? (points / gamesPlayed).toFixed(2) : '0.00',
       avgShots: shotsCount > 0 ? (totalShots / shotsCount).toFixed(1) : 'N/A',
       avgShotsonTarget: shotsonTargetCount > 0 ? (totalShotsonTarget / shotsonTargetCount).toFixed(1) : 'N/A',
@@ -126,30 +80,16 @@ function FixtureList() {
     return '#dc3545';
   };
 
-  const getHomeAwayColor = (homeOrAway) => {
-    return homeOrAway === 'Home' ? '#ffffff' : '#ffc107';
-  };
+  const getHomeAwayColor = (homeOrAway) => homeOrAway === 'Home' ? '#ffffff' : '#ffc107';
 
   if (selectedFixture) {
-    return (
-      <FixtureDetail
-        fixture={selectedFixture}
-        onBack={() => setSelectedFixture(null)}
-      />
-    );
+    return <FixtureDetail fixture={selectedFixture} onBack={() => setSelectedFixture(null)} />;
   }
-
-  if (loading) return <div style={{ padding: '20px' }}>Loading fixtures...</div>;
-  if (error) return <div style={{ padding: '20px' }}>Error: {error}</div>;
 
   const statTile = (value, label, bg, color) => (
     <div key={label} style={{
-      backgroundColor: bg,
-      borderRadius: '8px',
-      padding: '10px 8px',
-      textAlign: 'center',
-      flex: 1,
-      minWidth: '70px'
+      backgroundColor: bg, borderRadius: '8px', padding: '10px 8px',
+      textAlign: 'center', flex: 1, minWidth: '70px'
     }}>
       <div style={{ fontSize: '20px', fontWeight: 'bold', color }}>{value}</div>
       <div style={{ fontSize: '11px', color: '#555', marginTop: '2px' }}>{label}</div>
@@ -158,43 +98,23 @@ function FixtureList() {
 
   return (
     <div style={{ padding: '20px' }}>
-      {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
-        <img
-          src="/bwfc.png"
-          alt="BWFC"
-          style={{ width: '50px', height: '50px', marginRight: '15px' }}
-          onError={(e) => { e.target.style.display = 'none'; }}
-        />
+        <img src="/bwfc.png" alt="BWFC" style={{ width: '50px', height: '50px', marginRight: '15px' }}
+          onError={(e) => { e.target.style.display = 'none'; }} />
         <h1 style={{ color: '#003f7f', margin: 0 }}>Fixtures</h1>
       </div>
 
-      {/* Search */}
       <div style={{ marginBottom: '20px' }}>
-        <input
-          type="text"
-          placeholder="Enter opponent name here"
-          value={searchText}
+        <input type="text" placeholder="Enter opponent name here" value={searchText}
           onChange={(e) => setSearchText(e.target.value)}
-          style={{
-            width: '100%',
-            maxWidth: '400px',
-            padding: '10px',
-            border: '2px solid #003f7f',
-            borderRadius: '5px',
-            fontSize: '16px'
-          }}
+          style={{ width: '100%', maxWidth: '400px', padding: '10px', border: '2px solid #003f7f', borderRadius: '5px', fontSize: '16px' }}
         />
       </div>
 
-      {/* Competition Filter */}
       <div style={{ marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '10px' }}>
         <label style={{ fontWeight: 'bold', color: '#003f7f', fontSize: '14px' }}>Filter by competition:</label>
-        <select
-          value={competitionFilter}
-          onChange={(e) => setCompetitionFilter(e.target.value)}
-          style={{ padding: '6px 10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '14px', cursor: 'pointer' }}
-        >
+        <select value={competitionFilter} onChange={(e) => setCompetitionFilter(e.target.value)}
+          style={{ padding: '6px 10px', borderRadius: '5px', border: '1px solid #ccc', fontSize: '14px', cursor: 'pointer' }}>
           <option value="All">All Competitions</option>
           <option value="EFL League One">EFL League One</option>
           <option value="Carabao League Cup">Carabao League Cup</option>
@@ -204,18 +124,10 @@ function FixtureList() {
       </div>
 
       {/* Summary Box */}
-      <div style={{
-        border: '2px solid #4682b4',
-        borderRadius: '10px',
-        padding: '16px 20px',
-        marginBottom: '20px',
-        backgroundColor: '#fff'
-      }}>
+      <div style={{ border: '2px solid #4682b4', borderRadius: '10px', padding: '16px 20px', marginBottom: '20px', backgroundColor: '#fff' }}>
         <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#003f7f', marginBottom: '14px' }}>
           Season Summary {competitionFilter !== 'All' ? `â€” ${competitionFilter}` : 'â€” All Competitions'}
         </div>
-
-        {/* Results Row */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
           {[
             { value: summary.gamesPlayed, label: 'Played', bg: '#f0f0f0', color: '#444' },
@@ -227,19 +139,15 @@ function FixtureList() {
             { value: summary.cleanSheets, label: 'Clean Sheets', bg: '#dff0df', color: '#2e7d32' },
           ].map(item => statTile(item.value, item.label, item.bg, item.color))}
         </div>
-
-        {/* League specific row */}
         {isLeague && (
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
             {[
               { value: summary.points, label: 'Points', bg: '#ddeeff', color: '#1976d2' },
               { value: summary.pointsPerGame, label: 'Pts/Game', bg: '#ddeeff', color: '#1976d2' },
-              { value: summary.leaguePosition ? summary.leaguePosition : 'N/A', label: 'Position', bg: '#fdefd4', color: '#e65100' },
+              { value: summary.leaguePosition || 'N/A', label: 'Position', bg: '#fdefd4', color: '#e65100' },
             ].map(item => statTile(item.value, item.label, item.bg, item.color))}
           </div>
         )}
-
-        {/* BWFC shooting & xG row */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
           {[
             { value: summary.avgShots, label: 'Avg Shots', bg: '#f3e8f8', color: '#7b1fa2' },
@@ -248,16 +156,12 @@ function FixtureList() {
             { value: summary.avgXga, label: 'Avg xGA', bg: '#fde8e8', color: '#c62828' },
           ].map(item => statTile(item.value, item.label, item.bg, item.color))}
         </div>
-
-        {/* Opposition shooting row */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '10px' }}>
           {[
             { value: summary.avgOppShots, label: 'Opp Avg Shots', bg: '#fde8e8', color: '#c62828' },
             { value: summary.avgOppShotsOnTarget, label: 'Opp On Target', bg: '#fde8e8', color: '#c62828' },
           ].map(item => statTile(item.value, item.label, item.bg, item.color))}
         </div>
-
-        {/* Touches row */}
         <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
           {[
             { value: summary.avgTouchesOppBox, label: 'Avg Touches Opp Box', bg: '#dff0df', color: '#2e7d32' },
@@ -269,28 +173,17 @@ function FixtureList() {
       {/* Fixtures List */}
       <div style={{ maxWidth: '800px' }}>
         {filteredFixtures.map((fixture) => (
-          <div
-            key={fixture.id}
-            onClick={() => setSelectedFixture(fixture)}
+          <div key={fixture.id} onClick={() => setSelectedFixture(fixture)}
             style={{
-              backgroundColor: '#003f7f',
-              color: 'white',
-              padding: '15px',
-              marginBottom: '10px',
-              borderRadius: '8px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              cursor: 'pointer',
-              transition: 'transform 0.2s ease',
+              backgroundColor: '#003f7f', color: 'white', padding: '15px', marginBottom: '10px',
+              borderRadius: '8px', display: 'flex', justifyContent: 'space-between',
+              alignItems: 'center', cursor: 'pointer', transition: 'transform 0.2s ease',
             }}
             onMouseOver={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
             onMouseOut={(e) => e.currentTarget.style.transform = 'translateX(0)'}
           >
             <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '5px' }}>
-                {fixture.opponent}
-              </div>
+              <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '5px' }}>{fixture.opponent}</div>
               <div style={{ marginBottom: '3px' }}>{fixture.competition}</div>
               <div>{fixture.date}</div>
             </div>
@@ -310,7 +203,7 @@ function FixtureList() {
 
       {filteredFixtures.length === 0 && searchText && (
         <div style={{ padding: '20px', textAlign: 'center', color: '#666' }}>
-          No fixtures found matching "{searchText}"
+          No fixtures found matching &ldquo;{searchText}&rdquo;
         </div>
       )}
     </div>

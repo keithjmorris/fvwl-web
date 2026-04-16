@@ -1,61 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import ScorerDetail from './ScorerDetail';
 
-function ScorerList() {
-  const [fixtures, setFixtures] = useState([]);
-  const [scorers, setScorers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+function ScorerList({ fixtures = [] }) {
   const [selectedScorer, setSelectedScorer] = useState(null);
 
-  useEffect(() => {
-    const fetchFixtures = async () => {
-      try {
-        const response = await fetch('https://api.jsonbin.io/v3/b/68283e428561e97a50159f75/latest', {
-          headers: { 'X-Master-Key': '$2a$10$VTMAZsuNJaZxXb2dEFdOheJXXwRGD7GJj7e5vRp9jKvHqF51SN29e' }
-        });
-        const data = await response.json();
-        const allFixtures = data.record;
-        setFixtures(allFixtures);
-
-        // Build scorer totals from fixtures
-        const scorerMap = {};
-
-        allFixtures.forEach(fixture => {
-          for (let i = 1; i <= 8; i++) {
-            const scorer = fixture[`scorer${i}`];
-            if (!scorer || scorer.trim() === '') continue;
-
-            // Extract player ref â€” everything before the first '('
-            const playerRef = scorer.split('(')[0].trim();
-            if (!playerRef) continue;
-
-            // Count goals â€” a scorer string can contain multiple entries
-            // e.g. "M. Burstow (29') (53')" counts as 2
-            const timeMatches = scorer.match(/\(\d+[^)]*\)/g);
-            const goalCount = timeMatches ? timeMatches.length : 1;
-
-            if (!scorerMap[playerRef]) {
-              scorerMap[playerRef] = { playerRef, total: 0 };
-            }
-            scorerMap[playerRef].total += goalCount;
-          }
-        });
-
-        const scorerList = Object.values(scorerMap)
-          .filter(s => s.total > 0)
-          .sort((a, b) => b.total - a.total);
-
-        setScorers(scorerList);
-      } catch (err) {
-        console.error('Fetch error:', err);
-        setError(err.message);
-      } finally {
-        setLoading(false);
+  // Build scorer totals from fixtures
+  const scorerMap = {};
+  fixtures.forEach(fixture => {
+    for (let i = 1; i <= 8; i++) {
+      const scorer = fixture[`scorer${i}`];
+      if (!scorer || scorer.trim() === '') continue;
+      const playerRef = scorer.split('(')[0].trim();
+      if (!playerRef) continue;
+      const timeMatches = scorer.match(/\(\d+[^)]*\)/g);
+      const goalCount = timeMatches ? timeMatches.length : 1;
+      if (!scorerMap[playerRef]) {
+        scorerMap[playerRef] = { playerRef, total: 0 };
       }
-    };
-    fetchFixtures();
-  }, []);
+      scorerMap[playerRef].total += goalCount;
+    }
+  });
+
+  const scorers = Object.values(scorerMap)
+    .filter(s => s.total > 0)
+    .sort((a, b) => b.total - a.total);
 
   if (selectedScorer) {
     return (
@@ -66,9 +34,6 @@ function ScorerList() {
       />
     );
   }
-
-  if (loading) return <div style={{ padding: '20px' }}>Loading scorers...</div>;
-  if (error) return <div style={{ padding: '20px' }}>Error: {error}</div>;
 
   return (
     <div style={{ padding: '20px' }}>
@@ -122,12 +87,7 @@ function ScorerList() {
                 {scorer.playerRef}
               </div>
             </div>
-            <div style={{
-              fontSize: '24px',
-              fontWeight: 'bold',
-              minWidth: '60px',
-              textAlign: 'center'
-            }}>
+            <div style={{ fontSize: '24px', fontWeight: 'bold', minWidth: '60px', textAlign: 'center' }}>
               {scorer.total}
             </div>
           </div>

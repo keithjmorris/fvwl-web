@@ -4,7 +4,7 @@ import AppearanceStats from './AppearanceStats';
 import DisciplinaryStats from './DisciplinaryStats';
 import ImpactStats from './ImpactStats';
 
-function Stats() {
+function Stats({ fixtures }) {
   const [activeStatsView, setActiveStatsView] = useState('scorers');
 
   const statsNavItems = [
@@ -17,15 +17,15 @@ function Stats() {
   const renderStatsView = () => {
     switch (activeStatsView) {
       case 'scorers':
-        return <ScorerList />;
+        return <ScorerList fixtures={fixtures} />;
       case 'appearances':
-        return <AppearanceStats />;
+        return <AppearanceStats fixtures={fixtures} />;
       case 'disciplinary':
-        return <DisciplinaryStats />;
+        return <DisciplinaryStats fixtures={fixtures} />;
       case 'impact':
-        return <ImpactStats />;
+        return <ImpactStats fixtures={fixtures} />;
       default:
-        return <ScorerList />;
+        return <ScorerList fixtures={fixtures} />;
     }
   };
 
@@ -61,12 +61,12 @@ function Stats() {
               }}
               onMouseOver={(e) => {
                 if (activeStatsView !== item.key) {
-                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
                 }
               }}
               onMouseOut={(e) => {
                 if (activeStatsView !== item.key) {
-                  e.target.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
                 }
               }}
             >
