@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut } from 'firebase/auth';
+import { getDatabase, ref, onValue } from 'firebase/database';
 import EnhancedSquadList from './EnhancedSquadList';
 import FixtureList from './FixtureList';
 import Stats from './Stats';
@@ -17,6 +18,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const database = getDatabase(app);
 
 function Navigation({ activeView, onViewChange, user, onShowLogin }) {
   const navItems = [
@@ -175,6 +177,8 @@ function App() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [fixtures, setFixtures] = useState([]);
   const [fixturesLoading, setFixturesLoading] = useState(true);
+  const [players, setPlayers] = useState([]);
+  const [playersLoading, setPlayersLoading] = useState(true);
 
   // Firebase auth listener
   useEffect(() => {
@@ -203,20 +207,34 @@ function App() {
     fetchFixtures();
   }, []);
 
-  if (authLoading || fixturesLoading) {
+  // Fetch squad data (including financials) once on load
+  useEffect(() => {
+    const squadRef = ref(database, 'squad2526f');
+    const unsubscribe = onValue(squadRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const playersArray = Object.values(data).filter(p => p.notes !== 'Total');
+        setPlayers(playersArray);
+      }
+      setPlayersLoading(false);
+    });
+    return () => unsubscribe();
+  }, []);
+
+  if (authLoading || fixturesLoading || playersLoading) {
     return <div style={{ padding: '20px', textAlign: 'center' }}>Loading...</div>;
   }
 
   const renderView = () => {
     switch (activeView) {
       case 'squad':
-        return <EnhancedSquadList fixtures={fixtures} isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} user={user} />;
+        return <EnhancedSquadList fixtures={fixtures} players={players} isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} user={user} />;
       case 'fixtures':
-        return <FixtureList fixtures={fixtures} isAuthenticated={!!user} />;
+        return <FixtureList fixtures={fixtures} players={players} isAuthenticated={!!user} />;
       case 'stats':
         return <Stats fixtures={fixtures} />;
       default:
-        return <EnhancedSquadList fixtures={fixtures} isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} user={user} />;
+        return <EnhancedSquadList fixtures={fixtures} players={players} isAuthenticated={!!user} onRequestLogin={() => setShowAdminModal(true)} user={user} />;
     }
   };
 

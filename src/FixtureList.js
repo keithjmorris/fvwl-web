@@ -1,10 +1,135 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import FixtureDetail from './FixtureDetail';
 
-function FixtureList({ fixtures = [] }) {
+function FixtureList({ fixtures = [], players = [], isAuthenticated = false }) {
   const [searchText, setSearchText] = useState('');
   const [selectedFixture, setSelectedFixture] = useState(null);
   const [competitionFilter, setCompetitionFilter] = useState('EFL League One');
+
+  // â”€â”€â”€ Cost calculation helpers â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+  const parseMinute = (timeStr) => {
+    if (!timeStr) return null;
+    const clean = timeStr.replace(/'/g, '').trim();
+    if (clean.includes('+')) {
+      const parts = clean.split('+');
+      return parseInt(parts[0]) + parseInt(parts[1]);
+    }
+    return parseInt(clean);
+  };
+
+  // Calculate total season minutes for each player across all played fixtures
+  // Uses actual minutes â€” red card stops the clock for the player
+  const playerSeasonMinutes = useMemo(() => {
+    const minuteMap = {};
+    const allPlayed = fixtures.filter(f => f.result && f.result !== '');
+
+    allPlayed.forEach(fixture => {
+      // Starters
+      for (let i = 1; i <= 11; i++) {
+        const p = fixture[`starter${i}`];
+        if (!p || !p.trim()) continue;
+        const name = p.trim();
+        let mins = 90;
+
+        // Substituted off?
+        for (let j = 1; j <= 5; j++) {
+          if (fixture[`substitutedPlayer${j}`] && fixture[`substitutedPlayer${j}`].trim() === name) {
+            const m = parseMinute(fixture[`substituteTime${j}`]);
+            if (m !== null) mins = m;
+            break;
+          }
+        }
+
+        // Red card?
+        for (let j = 1; j <= 2; j++) {
+          if (fixture[`redCard${j}`] && fixture[`redCard${j}`].trim() === name) {
+            const m = parseMinute(fixture[`redCardTime${j}`]);
+            if (m !== null) mins = m;
+            break;
+          }
+        }
+
+        minuteMap[name] = (minuteMap[name] || 0) + mins;
+      }
+
+      // Substitutes
+      for (let i = 1; i <= 5; i++) {
+        const p = fixture[`substitute${i}`];
+        if (!p || !p.trim()) continue;
+        const name = p.trim();
+        const onTime = parseMinute(fixture[`substituteTime${i}`]);
+        const mins = onTime !== null ? 90 - onTime : 0;
+        minuteMap[name] = (minuteMap[name] || 0) + mins;
+      }
+    });
+
+    return minuteMap;
+  }, [fixtures]);
+
+  // Build a lookup of playerRef -> overallTotal from squad data
+  const playerCostMap = useMemo(() => {
+    const map = {};
+    players.forEach(player => {
+      if (player.forename && player.surname && player.overallTotal) {
+        const ref = `${player.forename.charAt(0)}. ${player.surname}`;
+        map[ref] = player.overallTotal;
+      }
+    });
+    return map;
+  }, [players]);
+
+  // Calculate cost for a single fixture
+  // For cost purposes: starters who received a red card still count as 90 mins
+  const calculateFixtureCost = (fixture) => {
+    if (!fixture.result || fixture.result === '') return null;
+    let totalCost = 0;
+    let playerCount = 0;
+
+    // Starters
+    for (let i = 1; i <= 11; i++) {
+      const p = fixture[`starter${i}`];
+      if (!p || !p.trim()) continue;
+      const name = p.trim();
+      const overallTotal = playerCostMap[name];
+      const seasonMins = playerSeasonMinutes[name];
+      if (!overallTotal || !seasonMins) continue;
+
+      // Substituted off reduces cost mins; red card does NOT (club still pays)
+      let costMins = 90;
+      for (let j = 1; j <= 5; j++) {
+        if (fixture[`substitutedPlayer${j}`] && fixture[`substitutedPlayer${j}`].trim() === name) {
+          const m = parseMinute(fixture[`substituteTime${j}`]);
+          if (m !== null) costMins = m;
+          break;
+        }
+      }
+
+      const costPerMin = overallTotal / seasonMins;
+      totalCost += costPerMin * costMins;
+      playerCount++;
+    }
+
+    // Substitutes
+    for (let i = 1; i <= 5; i++) {
+      const p = fixture[`substitute${i}`];
+      if (!p || !p.trim()) continue;
+      const name = p.trim();
+      const overallTotal = playerCostMap[name];
+      const seasonMins = playerSeasonMinutes[name];
+      if (!overallTotal || !seasonMins) continue;
+
+      const onTime = parseMinute(fixture[`substituteTime${i}`]);
+      const costMins = onTime !== null ? 90 - onTime : 0;
+      const costPerMin = overallTotal / seasonMins;
+      totalCost += costPerMin * costMins;
+      playerCount++;
+    }
+
+    return playerCount > 0 ? totalCost : null;
+  };
+
+  // â”€â”€â”€ Summary calculation â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
 
   const calculateSummary = (fixturesToSummarise) => {
     const playedFixtures = fixturesToSummarise.filter(f => f.result && f.result !== '');
@@ -20,6 +145,7 @@ function FixtureList({ fixtures = [] }) {
     let totalXg = 0, xgCount = 0;
     let totalXga = 0, xgaCount = 0;
     let leaguePosition = null;
+    let totalFixtureCost = 0, fixtureCostCount = 0;
 
     playedFixtures.forEach(fixture => {
       const bwfc = parseInt(fixture.BWFCScore);
@@ -43,6 +169,11 @@ function FixtureList({ fixtures = [] }) {
       if (fixture.xg && fixture.xg !== '') { totalXg += parseFloat(fixture.xg); xgCount++; }
       if (fixture.xga && fixture.xga !== '') { totalXga += parseFloat(fixture.xga); xgaCount++; }
       if (fixture.leaguePosition && fixture.leaguePosition !== '') { leaguePosition = fixture.leaguePosition; }
+
+      if (isAuthenticated) {
+        const cost = calculateFixtureCost(fixture);
+        if (cost !== null) { totalFixtureCost += cost; fixtureCostCount++; }
+      }
     });
 
     const points = (wins * 3) + draws;
@@ -60,7 +191,9 @@ function FixtureList({ fixtures = [] }) {
       avgTouchesOurBox: touchesOurBoxCount > 0 ? (totalTouchesOurBox / touchesOurBoxCount).toFixed(1) : 'N/A',
       avgXg: xgCount > 0 ? (totalXg / xgCount).toFixed(2) : 'N/A',
       avgXga: xgaCount > 0 ? (totalXga / xgaCount).toFixed(2) : 'N/A',
-      leaguePosition
+      leaguePosition,
+      avgFixtureCost: fixtureCostCount > 0 ? totalFixtureCost / fixtureCostCount : null,
+      totalFixtureCost: fixtureCostCount > 0 ? totalFixtureCost : null
     };
   };
 
@@ -81,9 +214,18 @@ function FixtureList({ fixtures = [] }) {
   };
 
   const getHomeAwayColor = (homeOrAway) => homeOrAway === 'Home' ? '#ffffff' : '#ffc107';
+  const formatCost = (cost) => `£${Math.round(cost).toLocaleString()}`;
 
   if (selectedFixture) {
-    return <FixtureDetail fixture={selectedFixture} onBack={() => setSelectedFixture(null)} />;
+    return (
+      <FixtureDetail
+        fixture={selectedFixture}
+        players={players}
+        seasonMinutes={playerSeasonMinutes}
+        isAuthenticated={isAuthenticated}
+        onBack={() => setSelectedFixture(null)}
+      />
+    );
   }
 
   const statTile = (value, label, bg, color) => (
@@ -162,43 +304,68 @@ function FixtureList({ fixtures = [] }) {
             { value: summary.avgOppShotsOnTarget, label: 'Opp On Target', bg: '#fde8e8', color: '#c62828' },
           ].map(item => statTile(item.value, item.label, item.bg, item.color))}
         </div>
-        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: isAuthenticated && summary.avgFixtureCost !== null ? '10px' : '0' }}>
           {[
             { value: summary.avgTouchesOppBox, label: 'Avg Touches Opp Box', bg: '#dff0df', color: '#2e7d32' },
             { value: summary.avgTouchesOurBox, label: 'Avg Touches Our Box', bg: '#fde8e8', color: '#c62828' },
           ].map(item => statTile(item.value, item.label, item.bg, item.color))}
         </div>
+
+        {/* Cost row â€” authenticated only */}
+        {isAuthenticated && summary.avgFixtureCost !== null && (
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+            {[
+              { value: formatCost(summary.avgFixtureCost), label: 'Avg Fixture Cost', bg: '#fff3cd', color: '#856404' },
+              { value: formatCost(summary.totalFixtureCost), label: 'Total Cost (played)', bg: '#fff3cd', color: '#856404' },
+            ].map(item => statTile(item.value, item.label, item.bg, item.color))}
+          </div>
+        )}
       </div>
 
       {/* Fixtures List */}
       <div style={{ maxWidth: '800px' }}>
-        {filteredFixtures.map((fixture) => (
-          <div key={fixture.id} onClick={() => setSelectedFixture(fixture)}
-            style={{
-              backgroundColor: '#003f7f', color: 'white', padding: '15px', marginBottom: '10px',
-              borderRadius: '8px', display: 'flex', justifyContent: 'space-between',
-              alignItems: 'center', cursor: 'pointer', transition: 'transform 0.2s ease',
-            }}
-            onMouseOver={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
-            onMouseOut={(e) => e.currentTarget.style.transform = 'translateX(0)'}
-          >
-            <div style={{ flex: 1 }}>
-              <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '5px' }}>{fixture.opponent}</div>
-              <div style={{ marginBottom: '3px' }}>{fixture.competition}</div>
-              <div>{fixture.date}</div>
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontWeight: 'bold', color: getHomeAwayColor(fixture.homeOrAway), marginBottom: '5px' }}>
-                {fixture.homeOrAway}
+        {filteredFixtures.map((fixture) => {
+          const fixtureCost = isAuthenticated ? calculateFixtureCost(fixture) : null;
+          return (
+            <div key={fixture.id} onClick={() => setSelectedFixture(fixture)}
+              style={{
+                backgroundColor: '#003f7f', color: 'white', padding: '15px', marginBottom: '10px',
+                borderRadius: '8px', cursor: 'pointer', transition: 'transform 0.2s ease',
+              }}
+              onMouseOver={(e) => e.currentTarget.style.transform = 'translateX(5px)'}
+              onMouseOut={(e) => e.currentTarget.style.transform = 'translateX(0)'}
+            >
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 'bold', fontSize: '18px', marginBottom: '5px' }}>{fixture.opponent}</div>
+                  <div style={{ marginBottom: '3px', fontSize: '14px' }}>{fixture.competition}</div>
+                  <div style={{ fontSize: '14px' }}>{fixture.date}</div>
+                </div>
+                <div style={{ textAlign: 'right' }}>
+                  <div style={{ fontWeight: 'bold', color: getHomeAwayColor(fixture.homeOrAway), marginBottom: '5px' }}>
+                    {fixture.homeOrAway}
+                  </div>
+                  {fixture.result && (
+                    <div style={{ fontWeight: 'bold', color: getResultColor(fixture) }}>
+                      {fixture.result}
+                    </div>
+                  )}
+                </div>
               </div>
-              {fixture.result && (
-                <div style={{ fontWeight: 'bold', color: getResultColor(fixture) }}>
-                  {fixture.result}
+
+              {/* Cost row â€” authenticated and played fixtures only */}
+              {fixtureCost !== null && (
+                <div style={{
+                  marginTop: '10px', paddingTop: '8px',
+                  borderTop: '1px solid rgba(255,255,255,0.2)',
+                  fontSize: '13px', color: '#ffc107'
+                }}>
+                  <strong>Fixture Cost:</strong> {formatCost(fixtureCost)}
                 </div>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {filteredFixtures.length === 0 && searchText && (
